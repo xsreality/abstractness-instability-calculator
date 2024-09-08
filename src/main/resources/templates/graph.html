@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+    <div th:fragment="graph">
+        <canvas id="metricsChart"></canvas>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script th:inline="javascript">
+            const metrics = /*[[${metrics}]]*/ {};
+            const ctx = document.getElementById('metricsChart').getContext('2d');
+            
+            const data = {
+                datasets: [
+                    {
+                        label: 'Main Sequence',
+                        data: [
+                            { x: 0, y: 1 },
+                            { x: 1, y: 0 }
+                        ],
+                        borderColor: 'black',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        type: 'line',
+                        order: 1
+                    },
+                    {
+                        label: 'Packages',
+                        data: Object.entries(metrics).map(([pkg, values]) => ({
+                            x: values.Instability,
+                            y: values.Abstractness,
+                            packageName: pkg,
+                            distance: values.Distance
+                        })),
+                        backgroundColor: (context) => {
+                            const distance = context.raw.distance;
+                            return distance <= 0.5 ? 'rgba(0, 255, 0, 0.6)' : 'rgba(255, 0, 0, 0.6)';
+                        },
+                        pointRadius: 6,
+                        type: 'scatter',
+                        order: 2
+                    }
+                ]
+            };
+
+            new Chart(ctx, {
+                type: 'scatter',
+                data: data,
+                options: {
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: {
+                                display: true,
+                                text: 'Instability'
+                            },
+                            min: 0,
+                            max: 1
+                        },
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Abstractness'
+                            },
+                            min: 0,
+                            max: 1
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    const point = context.raw;
+                                    if (point.packageName) {
+                                        return `${point.packageName} (I: ${point.x.toFixed(2)}, A: ${point.y.toFixed(2)}, D: ${point.distance.toFixed(2)})`;
+                                    }
+                                    return '';
+                                }
+                            }
+                        },
+                        legend: {
+                            labels: {
+                                filter: (legendItem) => legendItem.text !== 'Main Sequence'
+                            }
+                        }
+                    }
+                }
+            });
+        </script>
+    </div>
+    <div th:fragment="error">
+        <p th:text="${error}" style="color: red;"></p>
+    </div>
+</body>
+</html>

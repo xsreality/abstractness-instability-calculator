@@ -44,6 +44,44 @@
                     ]
                 };
 
+                const zonePlugin = {
+                    id: 'zonePlugin',
+                    beforeDraw: (chart) => {
+                        const ctx = chart.ctx;
+                        const xAxis = chart.scales.x;
+                        const yAxis = chart.scales.y;
+                        const chartArea = chart.chartArea;
+
+                        const drawSemicircle = (centerX, centerY, radius, startAngle, endAngle, color) => {
+                            ctx.beginPath();
+                            ctx.moveTo(centerX, centerY);
+                            ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+                            ctx.lineTo(centerX, centerY);
+                            ctx.fillStyle = color;
+                            ctx.fill();
+                        };
+
+                        // Zone of Pain (bottom-left corner)
+                        const painCenterX = xAxis.getPixelForValue(0);
+                        const painCenterY = yAxis.getPixelForValue(0);
+                        const painRadius = xAxis.getPixelForValue(0.4) - painCenterX;
+                        drawSemicircle(painCenterX, painCenterY, painRadius, 3*Math.PI/2, 0, 'rgba(231, 76, 60, 0.1)');
+
+                        // Zone of Uselessness (top-right corner)
+                        const uselessCenterX = xAxis.getPixelForValue(1);
+                        const uselessCenterY = yAxis.getPixelForValue(1);
+                        const uselessRadius = uselessCenterX - xAxis.getPixelForValue(0.6);
+                        drawSemicircle(uselessCenterX, uselessCenterY, uselessRadius, 2*Math.PI, Math.PI, 'rgba(52, 152, 219, 0.1)');
+
+                        // Labels
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                        ctx.font = '14px Roboto';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('Zone of Pain', xAxis.getPixelForValue(0.15), yAxis.getPixelForValue(0.15));
+                        ctx.fillText('Zone of Uselessness', xAxis.getPixelForValue(0.85), yAxis.getPixelForValue(0.85));
+                    }
+                };
+
                 const config = {
                     type: 'scatter',
                     data: data,
@@ -103,10 +141,13 @@
                                     filter: (legendItem) => legendItem.text !== 'Main Sequence'
                                 }
                             }
-                        }
-                    }
+                        },
+                        aspectRatio: 1  // This ensures the chart is square
+                    },
+                    plugins: [zonePlugin]
                 };
 
+                // Destroy existing chart if it exists
                 if (window.metricsChart instanceof Chart) {
                     window.metricsChart.destroy();
                 }
@@ -117,8 +158,8 @@
             .chart-container {
                 position: relative;
                 height: 60vh;
-                width: 80vw;
-                max-width: 1000px; /* Add a max-width to prevent the chart from becoming too wide */
+                width: 60vh;
+                max-width: 100%;
                 margin: 20px auto;
                 display: flex;
                 justify-content: center;

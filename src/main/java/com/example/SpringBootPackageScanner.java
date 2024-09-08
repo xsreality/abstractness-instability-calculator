@@ -5,6 +5,8 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.MethodNode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -20,33 +22,45 @@ import java.util.stream.Collectors;
  * A utility class for scanning Spring Boot projects to identify packages and calculate instability metrics.
  */
 public class SpringBootPackageScanner {
+    private static final Logger logger = LoggerFactory.getLogger(SpringBootPackageScanner.class);
 
     /**
-     * The main method that executes the package scanning and metric calculation process.
+     * Scans the given Spring Boot project to find the main package and its top-level subpackages,
+     * and calculates various metrics for these packages.
      *
-     * @param projectPath Command-line arguments. Expects a single argument: the path to the Spring Boot project.
+     * @param projectPath The path to the Spring Boot project.
+     * @return A map containing the calculated metrics for each top-level package.
+     * @throws IOException If an I/O error occurs during the scan.
      */
     public static Map<String, Map<String, Double>> scanProject(String projectPath) throws IOException {
+        logger.info("Starting project scan for path: {}", projectPath);
         Path path = Paths.get(projectPath);
         PackageFinder packageFinder = new PackageFinder(path);
         String mainPackage = packageFinder.findMainPackage();
         if (mainPackage == null || mainPackage.isEmpty()) {
+            logger.error("No @SpringBootApplication found in the project.");
             throw new IOException("No @SpringBootApplication found in the project.");
         }
+        logger.debug("Main package found: {}", mainPackage);
 
         List<String> topLevelPackages = packageFinder.findTopLevelPackages(mainPackage);
         if (topLevelPackages.isEmpty()) {
+            logger.error("No subpackages found.");
             throw new IOException("No subpackages found.");
         }
+        logger.debug("Top-level packages found: {}", topLevelPackages);
 
         InstabilityCalculator calculator = new InstabilityCalculator(path, topLevelPackages);
-        return calculator.calculateMetrics();
+        Map<String, Map<String, Double>> metrics = calculator.calculateMetrics();
+        logger.info("Project scan completed successfully.");
+        return metrics;
     }
 
     /**
      * A utility class for finding packages in a Spring Boot project.
      */
     static class PackageFinder {
+        private static final Logger logger = LoggerFactory.getLogger(PackageFinder.class);
         private final Path projectPath;
 
         /**
@@ -64,10 +78,10 @@ public class SpringBootPackageScanner {
          * @return The main package name, or null if not found.
          * @throws IOException If an I/O error occurs.
          */
-        String findMainPackage() throws IOException {
+        public String findMainPackage() throws IOException {
+            logger.debug("Searching for main package in project path: {}", projectPath);
             try (var walk = Files.walk(projectPath)) {
-                return walk
-                        .filter(Files::isRegularFile)
+                return walk.filter(Files::isRegularFile)
                         .filter(p -> p.toString().endsWith(".java"))
                         .filter(this::containsSpringBootApplication)
                         .map(this::extractPackage)
@@ -84,7 +98,7 @@ public class SpringBootPackageScanner {
          * @throws IOException If an I/O error occurs.
          */
         List<String> findTopLevelPackages(String mainPackage) throws IOException {
-            System.out.println("Main package: " + mainPackage);
+            logger.debug("Finding top-level packages for main package: {}", mainPackage);
             int targetDepth = mainPackage.split("\\.").length + 1;
 
             try (var walk = Files.walk(projectPath)) {
@@ -110,9 +124,20 @@ public class SpringBootPackageScanner {
          */
         private boolean containsSpringBootApplication(Path file) {
             try {
-                return Files.lines(file)
-                        .anyMatch(line -> line.contains("@SpringBootApplication"));
+                List<String> lines = Files.readAllLines(file);
+                boolean hasAnnotation = false;
+                boolean isPublicClass = false;
+                for (String line : lines) {
+                    if (line.trim().startsWith("@SpringBootApplication")) {
+                        hasAnnotation = true;
+                    } else if (line.contains("public class") && line.contains("{")) {
+                        isPublicClass = true;
+                        break;
+                    }
+                }
+                return hasAnnotation && isPublicClass;
             } catch (IOException e) {
+                logger.error("Error reading file: {}", file, e);
                 return false;
             }
         }
@@ -125,12 +150,14 @@ public class SpringBootPackageScanner {
          */
         private String extractPackage(Path file) {
             try {
-                return Files.lines(file)
-                        .filter(line -> line.startsWith("package"))
-                        .map(line -> line.replace("package", "").replace(";", "").trim())
+                List<String> lines = Files.readAllLines(file);
+                return lines.stream()
+                        .filter(line -> line.startsWith("package "))
+                        .map(line -> line.replace("package ", "").replace(";", "").trim())
                         .findFirst()
-                        .orElse(file.getParent().getFileName().toString());
+                        .orElse("");
             } catch (IOException e) {
+                logger.error("Error extracting package from file: {}", file, e);
                 return "";
             }
         }
@@ -169,6 +196,7 @@ public class SpringBootPackageScanner {
      * A utility class for calculating instability and abstractness metrics of packages.
      */
     static class InstabilityCalculator {
+        private static final Logger logger = LoggerFactory.getLogger(InstabilityCalculator.class);
         private final Path projectPath;
         private final List<String> packages;
 
@@ -190,6 +218,7 @@ public class SpringBootPackageScanner {
          * @throws IOException If an I/O error occurs.
          */
         Map<String, Map<String, Double>> calculateMetrics() throws IOException {
+            logger.info("Calculating metrics for {} packages", packages.size());
             Map<String, Set<String>> dependencies = new ConcurrentHashMap<>();
             Map<String, Set<String>> incomingDependencies = new ConcurrentHashMap<>();
             Map<String, Integer> abstractClassCount = new ConcurrentHashMap<>();
@@ -211,6 +240,7 @@ public class SpringBootPackageScanner {
                         });
             }
 
+            logger.debug("Dependency analysis completed. Calculating final metrics.");
             return computeMetrics(dependencies, incomingDependencies, abstractClassCount, totalClassCount);
         }
 
@@ -228,38 +258,47 @@ public class SpringBootPackageScanner {
 
                 if (!packages.contains(packageName)) return;
 
+                logger.trace("Analyzing class: {}", className);
                 totalClassCount.put(packageName, totalClassCount.get(packageName) + 1);
                 if ((classNode.access & Opcodes.ACC_ABSTRACT) != 0 || (classNode.access & Opcodes.ACC_INTERFACE) != 0) {
                     abstractClassCount.put(packageName, abstractClassCount.get(packageName) + 1);
                 }
 
                 for (MethodNode method : classNode.methods) {
-                    method.exceptions.forEach(exception -> {
-                        String exceptionName = Type.getObjectType((String) exception).getClassName();
-                        String exceptionPackage = getPackageName(exceptionName);
-                        if (packages.contains(exceptionPackage) && !exceptionPackage.equals(packageName)) {
-                            dependencies.get(packageName).add(exceptionPackage);
-                            incomingDependencies.get(exceptionPackage).add(packageName);
-                        }
-                    });
-
-                    method.instructions.forEach(instruction -> {
-                        if (instruction.getOpcode() == Opcodes.INVOKEVIRTUAL ||
-                                instruction.getOpcode() == Opcodes.INVOKESTATIC ||
-                                instruction.getOpcode() == Opcodes.INVOKEINTERFACE ||
-                                instruction.getOpcode() == Opcodes.INVOKESPECIAL) {
-                            String methodOwner = ((org.objectweb.asm.tree.MethodInsnNode) instruction).owner;
-                            String methodPackage = getPackageName(Type.getObjectType(methodOwner).getClassName());
-                            if (packages.contains(methodPackage) && !methodPackage.equals(packageName)) {
-                                dependencies.get(packageName).add(methodPackage);
-                                incomingDependencies.get(methodPackage).add(packageName);
-                            }
-                        }
-                    });
+                    analyzeMethod(method, packageName, dependencies, incomingDependencies);
                 }
             } catch (IOException e) {
-                System.err.println("Error analyzing class file: " + file);
+                logger.error("Error analyzing class file: {}", file, e);
             }
+        }
+
+        private void analyzeMethod(MethodNode method, String packageName,
+                                   Map<String, Set<String>> dependencies,
+                                   Map<String, Set<String>> incomingDependencies) {
+            method.exceptions.forEach(exception -> {
+                String exceptionName = Type.getObjectType((String) exception).getClassName();
+                String exceptionPackage = getPackageName(exceptionName);
+                if (packages.contains(exceptionPackage) && !exceptionPackage.equals(packageName)) {
+                    dependencies.get(packageName).add(exceptionPackage);
+                    incomingDependencies.get(exceptionPackage).add(packageName);
+                    logger.trace("Dependency found: {} -> {} (exception)", packageName, exceptionPackage);
+                }
+            });
+
+            method.instructions.forEach(instruction -> {
+                if (instruction.getOpcode() == Opcodes.INVOKEVIRTUAL ||
+                        instruction.getOpcode() == Opcodes.INVOKESTATIC ||
+                        instruction.getOpcode() == Opcodes.INVOKEINTERFACE ||
+                        instruction.getOpcode() == Opcodes.INVOKESPECIAL) {
+                    String methodOwner = ((org.objectweb.asm.tree.MethodInsnNode) instruction).owner;
+                    String methodPackage = getPackageName(Type.getObjectType(methodOwner).getClassName());
+                    if (packages.contains(methodPackage) && !methodPackage.equals(packageName)) {
+                        dependencies.get(packageName).add(methodPackage);
+                        incomingDependencies.get(methodPackage).add(packageName);
+                        logger.trace("Dependency found: {} -> {} (method call)", packageName, methodPackage);
+                    }
+                }
+            });
         }
 
         private String getPackageName(String className) {
@@ -298,9 +337,13 @@ public class SpringBootPackageScanner {
                 packageMetrics.put("Abstractness", Math.round(abstractness * 10000.0) / 10000.0);
                 packageMetrics.put("Distance", Math.round(distance * 10000.0) / 10000.0);
                 metrics.put(pkg, packageMetrics);
+
+                logger.debug("Metrics for package {}: I={}, A={}, D={}",
+                        pkg, packageMetrics.get("Instability"),
+                        packageMetrics.get("Abstractness"),
+                        packageMetrics.get("Distance"));
             }
             return metrics;
         }
     }
-
 }

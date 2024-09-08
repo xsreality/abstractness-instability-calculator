@@ -2,95 +2,136 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <body>
     <div th:fragment="graph">
-        <canvas id="metricsChart"></canvas>
+        <div class="chart-container">
+            <canvas id="metricsChart"></canvas>
+        </div>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script th:inline="javascript">
-            const metrics = /*[[${metrics}]]*/ {};
-            const ctx = document.getElementById('metricsChart').getContext('2d');
-            
-            const data = {
-                datasets: [
-                    {
-                        label: 'Main Sequence',
-                        data: [
-                            { x: 0, y: 1 },
-                            { x: 1, y: 0 }
-                        ],
-                        borderColor: 'black',
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        type: 'line',
-                        order: 1
-                    },
-                    {
-                        label: 'Packages',
-                        data: Object.entries(metrics).map(([pkg, values]) => ({
-                            x: values.Instability,
-                            y: values.Abstractness,
-                            packageName: pkg,
-                            distance: values.Distance
-                        })),
-                        backgroundColor: (context) => {
-                            const distance = context.raw.distance;
-                            return distance <= 0.5 ? 'rgba(0, 255, 0, 0.6)' : 'rgba(255, 0, 0, 0.6)';
+            (function() {
+                const metrics = /*[[${metrics}]]*/ {};
+                const ctx = document.getElementById('metricsChart').getContext('2d');
+                
+                const data = {
+                    datasets: [
+                        {
+                            label: 'Main Sequence',
+                            data: [
+                                { x: 0, y: 1 },
+                                { x: 1, y: 0 }
+                            ],
+                            borderColor: 'rgba(0, 0, 0, 0.5)',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            type: 'line',
+                            order: 1
                         },
-                        pointRadius: 6,
-                        type: 'scatter',
-                        order: 2
-                    }
-                ]
-            };
-
-            new Chart(ctx, {
-                type: 'scatter',
-                data: data,
-                options: {
-                    scales: {
-                        x: {
-                            type: 'linear',
-                            position: 'bottom',
-                            title: {
-                                display: true,
-                                text: 'Instability'
+                        {
+                            label: 'Packages',
+                            data: Object.entries(metrics).map(([pkg, values]) => ({
+                                x: values.Instability,
+                                y: values.Abstractness,
+                                packageName: pkg,
+                                distance: values.Distance
+                            })),
+                            backgroundColor: (context) => {
+                                const distance = context.raw.distance;
+                                return distance <= 0.5 ? 'rgba(46, 204, 113, 0.6)' : 'rgba(231, 76, 60, 0.6)';
                             },
-                            min: 0,
-                            max: 1
-                        },
-                        y: {
-                            type: 'linear',
-                            position: 'left',
-                            title: {
-                                display: true,
-                                text: 'Abstractness'
-                            },
-                            min: 0,
-                            max: 1
+                            pointRadius: 8,
+                            type: 'scatter',
+                            order: 2
                         }
-                    },
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: (context) => {
-                                    const point = context.raw;
-                                    if (point.packageName) {
-                                        return `${point.packageName} (I: ${point.x.toFixed(2)}, A: ${point.y.toFixed(2)}, D: ${point.distance.toFixed(2)})`;
+                    ]
+                };
+
+                const config = {
+                    type: 'scatter',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                type: 'linear',
+                                position: 'bottom',
+                                title: {
+                                    display: true,
+                                    text: 'Instability',
+                                    font: {
+                                        family: 'Roboto',
+                                        size: 14,
+                                        weight: 'bold'
                                     }
-                                    return '';
+                                },
+                                min: 0,
+                                max: 1
+                            },
+                            y: {
+                                type: 'linear',
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Abstractness',
+                                    font: {
+                                        family: 'Roboto',
+                                        size: 14,
+                                        weight: 'bold'
+                                    }
+                                },
+                                min: 0,
+                                max: 1
+                            }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => {
+                                        const point = context.raw;
+                                        if (point.packageName) {
+                                            return `${point.packageName} (I: ${point.x.toFixed(2)}, A: ${point.y.toFixed(2)}, D: ${point.distance.toFixed(2)})`;
+                                        }
+                                        return '';
+                                    }
+                                }
+                            },
+                            legend: {
+                                labels: {
+                                    font: {
+                                        family: 'Roboto',
+                                        size: 12
+                                    },
+                                    filter: (legendItem) => legendItem.text !== 'Main Sequence'
                                 }
                             }
-                        },
-                        legend: {
-                            labels: {
-                                filter: (legendItem) => legendItem.text !== 'Main Sequence'
-                            }
                         }
                     }
+                };
+
+                if (window.metricsChart instanceof Chart) {
+                    window.metricsChart.destroy();
                 }
-            });
+                window.metricsChart = new Chart(ctx, config);
+            })();
         </script>
+        <style>
+            .chart-container {
+                position: relative;
+                height: 60vh;
+                width: 80vw;
+                max-width: 1000px; /* Add a max-width to prevent the chart from becoming too wide */
+                margin: 20px auto;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+            canvas {
+                max-width: 100%;
+                max-height: 100%;
+            }
+        </style>
     </div>
     <div th:fragment="error">
-        <p th:text="${error}" style="color: red;"></p>
+        <p th:text="${error}" style="color: #e74c3c; font-weight: bold; text-align: center; margin-top: 20px;"></p>
     </div>
 </body>
 </html>

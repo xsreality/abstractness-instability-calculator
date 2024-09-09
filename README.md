@@ -35,7 +35,7 @@ This Spring Boot application calculates abstractness and instability metrics for
 
 1. Run the application:
    ```
-   java -jar target/springboot-package-scanner-1.0-SNAPSHOT.jar
+   java -jar target/abstractness-instability-calculator-1.0-SNAPSHOT.jar
    ```
 
 2. Open a web browser and go to `http://localhost:8080`

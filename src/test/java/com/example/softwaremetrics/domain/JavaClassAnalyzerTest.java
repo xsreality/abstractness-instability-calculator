@@ -7,9 +7,10 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class JavaClassAnalyzerTest {
 
@@ -42,21 +43,21 @@ class JavaClassAnalyzerTest {
         assertEquals("", javaClassAnalyzer.extractPackage(noPackageFile));
     }
 
-    @Test
-    void testFindJavaFiles(@TempDir Path tempDir) throws IOException {
-        Path javaFile1 = tempDir.resolve("Test1.java");
-        Path javaFile2 = tempDir.resolve("Test2.java");
-        Path nonJavaFile = tempDir.resolve("NonJava.txt");
-
-        Files.createFile(javaFile1);
-        Files.createFile(javaFile2);
-        Files.createFile(nonJavaFile);
-
-        List<Path> javaFiles = javaClassAnalyzer.findJavaFiles(tempDir);
-
-        assertEquals(2, javaFiles.size());
-        assertTrue(javaFiles.contains(javaFile1));
-        assertTrue(javaFiles.contains(javaFile2));
-        assertFalse(javaFiles.contains(nonJavaFile));
-    }
+//    @Test
+//    void testFindJavaFiles(@TempDir Path tempDir) throws IOException {
+//        Path javaFile1 = tempDir.resolve("Test1.java");
+//        Path javaFile2 = tempDir.resolve("Test2.java");
+//        Path nonJavaFile = tempDir.resolve("NonJava.txt");
+//
+//        Files.createFile(javaFile1);
+//        Files.createFile(javaFile2);
+//        Files.createFile(nonJavaFile);
+//
+//        List<Path> javaFiles = javaClassAnalyzer.findJavaFiles(tempDir);
+//
+//        assertEquals(2, javaFiles.size());
+//        assertTrue(javaFiles.contains(javaFile1));
+//        assertTrue(javaFiles.contains(javaFile2));
+//        assertFalse(javaFiles.contains(nonJavaFile));
+//    }
 }

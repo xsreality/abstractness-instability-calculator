@@ -16,14 +16,14 @@ public class ProjectPathTraverser {
 
     private static final Logger logger = LoggerFactory.getLogger(ProjectPathTraverser.class);
 
-    public List<Path> findJavaFiles(Path projectPath) {
-        logger.debug("Finding Java files in project path: {}", projectPath);
-        try (var walk = Files.walk(projectPath)) {
+    public List<Path> findJavaFiles(Path directoryPath) {
+        logger.debug("Finding Java files in directory: {}", directoryPath);
+        try (var walk = Files.walk(directoryPath)) {
             return walk.filter(Files::isRegularFile)
                     .filter(p -> p.toString().endsWith(".java"))
                     .collect(Collectors.toList());
         } catch (IOException e) {
-            logger.error("Error finding Java files in project path: {}", projectPath, e);
+            logger.error("Error finding Java files in directory: {}", directoryPath, e);
             return Collections.emptyList();
         }
     }

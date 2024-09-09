@@ -4,7 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,7 +24,12 @@ public class PackageLocator {
 
     public String findMainPackage(Path projectPath) {
         logger.debug("Searching for main package in project path: {}", projectPath);
-        List<Path> javaFiles = projectPathTraverser.findJavaFiles(projectPath);
+        Path srcMainJavaPath = projectPath.resolve("src/main/java");
+        if (!Files.exists(srcMainJavaPath)) {
+            logger.warn("src/main/java directory not found in project path: {}", projectPath);
+            return null;
+        }
+        List<Path> javaFiles = projectPathTraverser.findJavaFiles(srcMainJavaPath);
         return javaFiles.stream()
                 .filter(javaClassAnalyzer::containsSpringBootApplication)
                 .map(javaClassAnalyzer::extractPackage)

@@ -1,4 +1,7 @@
-package com.example;
+package com.example.softwaremetrics.application;
+
+import com.example.softwaremetrics.domain.PackageMetricsCalculator;
+import com.example.softwaremetrics.infrastructure.PackageFinder;
 
 import org.springframework.stereotype.Component;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +14,10 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * A Spring Boot component responsible for scanning project directories and estimating metrics
+ * for packages within the project. Utilizes external classes to locate the main package and compute necessary metrics.
+ */
 @Component
 public class SpringBootPackageScanner {
     private static final Logger logger = LoggerFactory.getLogger(SpringBootPackageScanner.class);

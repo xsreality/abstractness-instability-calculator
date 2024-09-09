@@ -1,6 +1,6 @@
-package com.example.controller;
+package com.example.softwaremetrics.infrastructure;
 
-import com.example.SpringBootPackageScanner;
+import com.example.softwaremetrics.application.SpringBootPackageScanner;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;

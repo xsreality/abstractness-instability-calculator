@@ -1,4 +1,4 @@
-package com.example;
+package com.example.softwaremetrics.domain;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Opcodes;
@@ -38,25 +38,25 @@ public class PackageMetricsCalculator {
      */
     public Map<String, Map<String, Double>> calculateMetrics(Path projectPath, List<String> packages) throws IOException {
         logger.info("Calculating metrics for {} packages", packages.size());
-        Map<String, Set<String>> dependencies = new ConcurrentHashMap<>();
+        Map<String, Set<String>> outgoingDependencies = new ConcurrentHashMap<>();
         Map<String, Set<String>> incomingDependencies = new ConcurrentHashMap<>();
         Map<String, Integer> abstractClassCount = new ConcurrentHashMap<>();
         Map<String, Integer> totalClassCount = new ConcurrentHashMap<>();
 
-        initializeMaps(packages, dependencies, incomingDependencies, abstractClassCount, totalClassCount);
+        initializeMaps(packages, outgoingDependencies, incomingDependencies, abstractClassCount, totalClassCount);
 
-        analyzeClasses(projectPath, packages, dependencies, incomingDependencies, abstractClassCount, totalClassCount);
+        analyzeClasses(projectPath, packages, outgoingDependencies, incomingDependencies, abstractClassCount, totalClassCount);
 
         logger.debug("Dependency analysis completed. Calculating final metrics.");
-        return computeMetrics(packages, dependencies, incomingDependencies, abstractClassCount, totalClassCount);
+        return computeMetrics(packages, outgoingDependencies, incomingDependencies, abstractClassCount, totalClassCount);
     }
 
-    private void initializeMaps(List<String> packages, Map<String, Set<String>> dependencies,
+    private void initializeMaps(List<String> packages, Map<String, Set<String>> outgoingDependencies,
                                 Map<String, Set<String>> incomingDependencies,
                                 Map<String, Integer> abstractClassCount,
                                 Map<String, Integer> totalClassCount) {
         packages.forEach(pkg -> {
-            dependencies.put(pkg, ConcurrentHashMap.newKeySet());
+            outgoingDependencies.put(pkg, ConcurrentHashMap.newKeySet());
             incomingDependencies.put(pkg, ConcurrentHashMap.newKeySet());
             abstractClassCount.put(pkg, 0);
             totalClassCount.put(pkg, 0);
@@ -64,7 +64,7 @@ public class PackageMetricsCalculator {
     }
 
     private void analyzeClasses(Path projectPath, List<String> packages,
-                                Map<String, Set<String>> dependencies,
+                                Map<String, Set<String>> outgoingDependencies,
                                 Map<String, Set<String>> incomingDependencies,
                                 Map<String, Integer> abstractClassCount,
                                 Map<String, Integer> totalClassCount) throws IOException {
@@ -73,13 +73,13 @@ public class PackageMetricsCalculator {
                     .filter(Files::isRegularFile)
                     .filter(p -> p.toString().endsWith(".class"))
                     .forEach(file -> {
-                        analyzeClassFile(file, packages, dependencies, incomingDependencies, abstractClassCount, totalClassCount);
+                        analyzeClassFile(file, packages, outgoingDependencies, incomingDependencies, abstractClassCount, totalClassCount);
                     });
         }
     }
 
     private void analyzeClassFile(Path file, List<String> packages,
-                                  Map<String, Set<String>> dependencies,
+                                  Map<String, Set<String>> outgoingDependencies,
                                   Map<String, Set<String>> incomingDependencies,
                                   Map<String, Integer> abstractClassCount,
                                   Map<String, Integer> totalClassCount) {
@@ -100,7 +100,7 @@ public class PackageMetricsCalculator {
             }
 
             for (MethodNode method : classNode.methods) {
-                analyzeMethod(method, packageName, packages, dependencies, incomingDependencies);
+                analyzeMethod(method, packageName, packages, outgoingDependencies, incomingDependencies);
             }
         } catch (IOException e) {
             logger.error("Error analyzing class file: {}", file, e);
@@ -108,22 +108,22 @@ public class PackageMetricsCalculator {
     }
 
     private void analyzeMethod(MethodNode method, String packageName, List<String> packages,
-                           Map<String, Set<String>> dependencies,
+                           Map<String, Set<String>> outgoingDependencies,
                            Map<String, Set<String>> incomingDependencies) {
     // Analyze method signature
     Type returnType = Type.getReturnType(method.desc);
-    addDependency(packageName, getPackageName(returnType.getClassName()), packages, dependencies, incomingDependencies);
+    addDependency(packageName, getPackageName(returnType.getClassName()), packages, outgoingDependencies, incomingDependencies);
 
     // Analyze parameter types
     for (Type paramType : Type.getArgumentTypes(method.desc)) {
-        addDependency(packageName, getPackageName(paramType.getClassName()), packages, dependencies, incomingDependencies);
+        addDependency(packageName, getPackageName(paramType.getClassName()), packages, outgoingDependencies, incomingDependencies);
     }
 
     // Analyze exceptions
     method.exceptions.forEach(exception -> {
-        String exceptionName = Type.getObjectType((String) exception).getClassName();
+        String exceptionName = Type.getObjectType(exception).getClassName();
         String exceptionPackage = getPackageName(exceptionName);
-        addDependency(packageName, exceptionPackage, packages, dependencies, incomingDependencies);
+        addDependency(packageName, exceptionPackage, packages, outgoingDependencies, incomingDependencies);
     });
 
     // Analyze method body
@@ -131,15 +131,15 @@ public class PackageMetricsCalculator {
         if (instruction instanceof org.objectweb.asm.tree.MethodInsnNode methodInsn) {
             String methodOwner = Type.getObjectType(methodInsn.owner).getClassName();
             String methodPackage = getPackageName(methodOwner);
-            addDependency(packageName, methodPackage, packages, dependencies, incomingDependencies);
+            addDependency(packageName, methodPackage, packages, outgoingDependencies, incomingDependencies);
         } else if (instruction instanceof org.objectweb.asm.tree.FieldInsnNode fieldInsn) {
             String fieldOwner = Type.getObjectType(fieldInsn.owner).getClassName();
             String fieldPackage = getPackageName(fieldOwner);
-            addDependency(packageName, fieldPackage, packages, dependencies, incomingDependencies);
+            addDependency(packageName, fieldPackage, packages, outgoingDependencies, incomingDependencies);
         } else if (instruction instanceof org.objectweb.asm.tree.TypeInsnNode typeInsn) {
             String typeName = Type.getObjectType(typeInsn.desc).getClassName();
             String typePackage = getPackageName(typeName);
-            addDependency(packageName, typePackage, packages, dependencies, incomingDependencies);
+            addDependency(packageName, typePackage, packages, outgoingDependencies, incomingDependencies);
         }
     });
 
@@ -147,17 +147,17 @@ public class PackageMetricsCalculator {
     if (method.localVariables != null) {
         for (org.objectweb.asm.tree.LocalVariableNode localVar : method.localVariables) {
             String localVarType = Type.getType(localVar.desc).getClassName();
-            addDependency(packageName, getPackageName(localVarType), packages, dependencies, incomingDependencies);
+            addDependency(packageName, getPackageName(localVarType), packages, outgoingDependencies, incomingDependencies);
         }
     }
 }
 
     private void addDependency(String fromPackage, String toPackage, List<String> packages,
-                               Map<String, Set<String>> dependencies,
+                               Map<String, Set<String>> outgoingDependencies,
                                Map<String, Set<String>> incomingDependencies) {
         if (packages.contains(toPackage) && !fromPackage.equals(toPackage)) {
-            dependencies.computeIfAbsent(fromPackage, k -> ConcurrentHashMap.newKeySet()).add(toPackage);
-            incomingDependencies.computeIfAbsent(toPackage, k -> ConcurrentHashMap.newKeySet()).add(fromPackage);
+            outgoingDependencies.computeIfAbsent(fromPackage, _ -> ConcurrentHashMap.newKeySet()).add(toPackage);
+            incomingDependencies.computeIfAbsent(toPackage, _ -> ConcurrentHashMap.newKeySet()).add(fromPackage);
         }
     }
 
@@ -167,13 +167,13 @@ public class PackageMetricsCalculator {
     }
 
     private Map<String, Map<String, Double>> computeMetrics(List<String> packages,
-                                                            Map<String, Set<String>> dependencies,
+                                                            Map<String, Set<String>> outgoingDependencies,
                                                             Map<String, Set<String>> incomingDependencies,
                                                             Map<String, Integer> abstractClassCount,
                                                             Map<String, Integer> totalClassCount) {
         Map<String, Map<String, Double>> metrics = new ConcurrentHashMap<>();
         for (String pkg : packages) {
-            int ce = dependencies.getOrDefault(pkg, Set.of()).size();
+            int ce = outgoingDependencies.getOrDefault(pkg, Set.of()).size();
             int ca = incomingDependencies.getOrDefault(pkg, Set.of()).size();
             double instability = (ce + ca == 0) ? 0.0 : (double) ce / (ce + ca);
 

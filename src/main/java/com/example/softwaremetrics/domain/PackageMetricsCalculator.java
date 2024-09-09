@@ -36,7 +36,7 @@ public class PackageMetricsCalculator {
      * and 'Distance'.
      * @
      */
-    public Map<String, Map<String, Double>> calculateMetrics(Path projectPath, List<String> packages) throws IOException {
+    public Map<String, Map<String, Double>> calculateMetrics(Path projectPath, List<String> packages) {
         logger.info("Calculating metrics for {} packages", packages.size());
         Map<String, Set<String>> outgoingDependencies = new ConcurrentHashMap<>();
         Map<String, Set<String>> incomingDependencies = new ConcurrentHashMap<>();
@@ -67,7 +67,7 @@ public class PackageMetricsCalculator {
                                 Map<String, Set<String>> outgoingDependencies,
                                 Map<String, Set<String>> incomingDependencies,
                                 Map<String, Integer> abstractClassCount,
-                                Map<String, Integer> totalClassCount) throws IOException {
+                                Map<String, Integer> totalClassCount) {
         try (var walk = Files.walk(projectPath)) {
             walk.parallel()
                     .filter(Files::isRegularFile)
@@ -75,6 +75,9 @@ public class PackageMetricsCalculator {
                     .forEach(file -> {
                         analyzeClassFile(file, packages, outgoingDependencies, incomingDependencies, abstractClassCount, totalClassCount);
                     });
+        } catch (IOException e) {
+            logger.error("Error while analyzing classes for {}", projectPath, e);
+            throw new IllegalStateException(e);
         }
     }
 

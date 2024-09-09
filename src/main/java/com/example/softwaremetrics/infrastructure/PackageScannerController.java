@@ -31,7 +31,7 @@ public class PackageScannerController {
             Map<String, Map<String, Double>> metrics = springBootPackageScanner.scanProject(path);
             model.addAttribute("metrics", metrics);
             return "graph :: graph";
-        } catch (IOException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             model.addAttribute("error", "Error scanning project: " + e.getMessage());
             return "graph :: error";
         }

@@ -1,6 +1,4 @@
-package com.example;
-
-import com.example.softwaremetrics.domain.PackageMetricsCalculator;
+package com.example.softwaremetrics.domain;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,7 +15,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class PackageMetricsCalculatorTest {
 
@@ -51,9 +50,9 @@ class PackageMetricsCalculatorTest {
 
         Map<String, Double> exampleMetrics = metrics.get("com.example");
         assertNotNull(exampleMetrics, "Metrics for com.example should exist");
-        assertEquals(1.0, exampleMetrics.get("Instability"), 0.01, "Instability for com.example should be 0.5");
-        assertEquals(0.5, exampleMetrics.get("Abstractness"), 0.01, "Abstractness for com.example should be 0.5");
-        assertEquals(0.5, exampleMetrics.get("Distance"), 0.01, "Distance for com.example should be 0.0");
+        assertEquals(1.0, exampleMetrics.get("Instability"), "Instability for com.example should be 1.0");
+        assertEquals(0.5, exampleMetrics.get("Abstractness"), "Abstractness for com.example should be 0.5");
+        assertEquals(0.5, exampleMetrics.get("Distance"), "Distance for com.example should be 0.5");
 
         logger.info("testCalculateMetrics completed successfully");
     }
@@ -77,10 +76,10 @@ class PackageMetricsCalculatorTest {
         ClassWriter cw = new ClassWriter(0);
         cw.visit(Opcodes.V22, isAbstract ? Opcodes.ACC_PUBLIC + Opcodes.ACC_ABSTRACT : Opcodes.ACC_PUBLIC,
                 className.replace('.', '/'), null, "java/lang/Object", null);
-        
+
         // Add a constructor
         cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null).visitEnd();
-        
+
         // Add a method that uses the dependencies
         org.objectweb.asm.MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC, "useDependencies", "()V", null, null);
         mv.visitCode();
@@ -93,7 +92,7 @@ class PackageMetricsCalculatorTest {
         mv.visitInsn(Opcodes.RETURN);
         mv.visitMaxs(2, 1);
         mv.visitEnd();
-        
+
         cw.visitEnd();
         Files.write(path, cw.toByteArray());
         logger.debug("Created mock class file: {}", path);

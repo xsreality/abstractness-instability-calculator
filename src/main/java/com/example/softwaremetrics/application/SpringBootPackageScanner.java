@@ -1,14 +1,13 @@
 package com.example.softwaremetrics.application;
 
+import com.example.softwaremetrics.domain.PackageLocator;
 import com.example.softwaremetrics.domain.PackageMetricsCalculator;
-import com.example.softwaremetrics.infrastructure.PackageFinder;
 
-import org.springframework.stereotype.Component;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -20,32 +19,33 @@ import java.util.Map;
  */
 @Component
 public class SpringBootPackageScanner {
+
     private static final Logger logger = LoggerFactory.getLogger(SpringBootPackageScanner.class);
 
-    private final PackageFinder packageFinder;
+    private final PackageLocator packageLocator;
     private final PackageMetricsCalculator packageMetricsCalculator;
 
     @Autowired
-    public SpringBootPackageScanner(PackageFinder packageFinder, PackageMetricsCalculator packageMetricsCalculator) {
-        this.packageFinder = packageFinder;
+    public SpringBootPackageScanner(PackageLocator packageLocator, PackageMetricsCalculator packageMetricsCalculator) {
+        this.packageLocator = packageLocator;
         this.packageMetricsCalculator = packageMetricsCalculator;
     }
 
-    public Map<String, Map<String, Double>> scanProject(String projectPath) throws IOException {
+    public Map<String, Map<String, Double>> scanProject(String projectPath) {
         logger.info("Starting project scan for path: {}", projectPath);
         Path path = Paths.get(projectPath);
-        
-        String mainPackage = packageFinder.findMainPackage(path);
+
+        String mainPackage = packageLocator.findMainPackage(path);
         if (mainPackage == null || mainPackage.isEmpty()) {
             logger.error("No @SpringBootApplication found in the project.");
-            throw new IOException("No @SpringBootApplication found in the project.");
+            throw new IllegalArgumentException("No @SpringBootApplication found in the project.");
         }
         logger.debug("Main package found: {}", mainPackage);
 
-        List<String> topLevelPackages = packageFinder.findTopLevelPackages(path, mainPackage);
+        List<String> topLevelPackages = packageLocator.findTopLevelPackages(path, mainPackage);
         if (topLevelPackages.isEmpty()) {
             logger.error("No subpackages found.");
-            throw new IOException("No subpackages found.");
+            throw new IllegalArgumentException("No subpackages found.");
         }
         logger.debug("Top-level packages found: {}", topLevelPackages);
 

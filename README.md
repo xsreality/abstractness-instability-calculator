@@ -2,6 +2,8 @@
 
 This Spring Boot application calculates abstractness and instability metrics for Java projects, helping developers analyze the structure and dependencies of their codebase.
 
+![image](https://github.com/user-attachments/assets/c66e6c52-ccd3-4410-bc0d-ac3941ce122d)
+
 ## Features
 
 - Scans Java projects to identify packages and their relationships

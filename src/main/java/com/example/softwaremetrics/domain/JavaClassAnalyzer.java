@@ -35,7 +35,6 @@ public class JavaClassAnalyzer {
      */
     boolean containsSpringBootApplication(Path file) {
         try (Stream<String> lines = Files.lines(file)) {
-            logger.debug("Analyzing file {}", file);
             return lines.anyMatch(line -> line.contains("@SpringBootApplication"));
         } catch (IOException e) {
             logger.error("Error reading file: {}", file, e);
@@ -65,11 +64,16 @@ public class JavaClassAnalyzer {
             walk.parallel()
                     .filter(Files::isRegularFile)
                     .filter(p -> p.toString().endsWith(".class"))
+                    .filter(this::isNotTestClass)
                     .forEach(file -> analyzeClassFile(file, packages, outgoingDependencies, incomingDependencies, abstractClassCount, totalClassCount));
         } catch (IOException e) {
             logger.error("Error while analyzing classes for {}", projectPath, e);
             throw new IllegalStateException(e);
         }
+    }
+
+    private boolean isNotTestClass(Path path) {
+        return !path.toString().contains("target/test-classes");
     }
 
     private void analyzeClassFile(Path file, List<String> packages,

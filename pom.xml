@@ -14,6 +14,7 @@
     <version>1.0-SNAPSHOT</version>
     <properties>
         <java.version>22</java.version>
+        <asm.version>9.7</asm.version>
     </properties>
     <dependencies>
         <dependency>
@@ -27,12 +28,12 @@
         <dependency>
             <groupId>org.ow2.asm</groupId>
             <artifactId>asm</artifactId>
-            <version>9.7</version>
+            <version>${asm.version}</version>
         </dependency>
         <dependency>
             <groupId>org.ow2.asm</groupId>
             <artifactId>asm-tree</artifactId>
-            <version>9.7</version>
+            <version>${asm.version}</version>
         </dependency>
         <!-- SLF4J API -->
         <dependency>

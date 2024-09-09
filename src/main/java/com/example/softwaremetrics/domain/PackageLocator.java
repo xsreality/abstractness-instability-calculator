@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -39,35 +40,34 @@ public class PackageLocator {
 
     public List<String> findTopLevelPackages(Path projectPath, String mainPackage) {
         logger.debug("Finding top-level packages for main package: {} in project path: {}", mainPackage, projectPath);
-        List<Path> javaFiles = projectPathTraverser.findJavaFiles(projectPath);
+        Path srcMainJavaPath = projectPath.resolve("src/main/java");
+        if (!Files.exists(srcMainJavaPath)) {
+            logger.warn("src/main/java directory not found in project path: {}", projectPath);
+            return List.of();
+        }
+
+        List<Path> javaPackages = projectPathTraverser.findPackages(srcMainJavaPath);
 
         int targetDepth = mainPackage.split("\\.").length + 1;
 
-        return javaFiles.stream()
-                .map(Path::getParent)
+        return javaPackages.stream()
+                .map(srcMainJavaPath::relativize)
                 .map(Path::toString)
-                .filter(path -> path.contains("src/main/java"))
-                .map(this::extractPackagePath)
-                .filter(path -> !path.isEmpty())
-                .map(path -> path.replace('/', '.').trim())
+                .map(path -> path.replace(File.separator, "."))
+                .filter(pkg -> !pkg.isEmpty())
                 .filter(pkg -> isTopLevelPackage(pkg, mainPackage, targetDepth))
                 .distinct()
                 .sorted()
                 .collect(Collectors.toList());
     }
 
-    private String extractPackagePath(String path) {
-        int index = path.indexOf("src/main/java");
-        if (index == -1 || index + 14 >= path.length()) {
-            logger.warn("Invalid path structure: {}", path);
-            return "";
-        }
-        return path.substring(index + 14);
+    private String extractPackagePath(Path path) {
+        Path relativePath = path.getParent().relativize(path.getParent().getRoot().resolve("src/main/java"));
+        return relativePath.toString();
     }
 
     private boolean isTopLevelPackage(String pkg, String mainPackage, int targetDepth) {
-        String[] pkgParts = pkg.split("\\.");
-        return pkgParts.length == targetDepth &&
+        return pkg.split("\\.").length == targetDepth &&
                 pkg.startsWith(mainPackage + ".") &&
                 !pkg.equals(mainPackage);
     }

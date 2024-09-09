@@ -54,4 +54,41 @@ class ProjectPathTraverserTest {
 
         assertTrue(javaFiles.isEmpty());
     }
+
+    @Test
+    void testFindPackagesInNonExistentDirectory() {
+        // given
+        Path nonExistentDir = Path.of("/non/existent/directory");
+        ProjectPathTraverser projectPathTraverser = new ProjectPathTraverser();
+        // when
+        List<Path> packages = projectPathTraverser.findPackages(nonExistentDir);
+        // then
+        assertTrue(packages.isEmpty());
+    }
+
+    @Test
+    void testFindPackagesInEmptyDirectory(@TempDir Path tempDir) {
+        // given
+        ProjectPathTraverser projectPathTraverser = new ProjectPathTraverser();
+        // when
+        List<Path> packages = projectPathTraverser.findPackages(tempDir);
+        // then
+        assertFalse(packages.isEmpty());
+        assertEquals(1, packages.size());
+    }
+
+    @Test
+    void testFindPackagesInDirectoryWithSubDirectories(@TempDir Path tempDir) throws IOException {
+        // given
+        ProjectPathTraverser projectPathTraverser = new ProjectPathTraverser();
+        Path subdir1 = tempDir.resolve("subdir1");
+        Path subdir2 = subdir1.resolve("subdir2");
+        Files.createDirectories(subdir2);
+        // when
+        List<Path> packages = projectPathTraverser.findPackages(tempDir);
+        // then
+        assertEquals(3, packages.size());
+        assertTrue(packages.contains(subdir1));
+        assertTrue(packages.contains(subdir2));
+    }
 }

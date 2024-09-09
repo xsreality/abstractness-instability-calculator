@@ -27,4 +27,16 @@ public class ProjectPathTraverser {
             return Collections.emptyList();
         }
     }
+
+    public List<Path> findPackages(Path directoryPath) {
+        logger.debug("Finding packages in directory: {}", directoryPath);
+        try (var walk = Files.walk(directoryPath)) {
+            return walk
+                    .filter(Files::isDirectory)
+                    .collect(Collectors.toList());
+        } catch (IOException e) {
+            logger.error("Error finding Java packages in directory: {}", directoryPath, e);
+            return Collections.emptyList();
+        }
+    }
 }

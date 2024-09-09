@@ -1,12 +1,14 @@
 # Abstractness and Instability Metrics Calculator
 
-This Spring Boot application calculates abstractness and instability metrics for Java projects, helping developers analyze the structure and dependencies of their codebase.
+This application calculates abstractness and instability metrics for Java, Spring Boot projects, helping developers analyze the structure and dependencies of their codebase.
+
+It follows the principles of Spring Modulith by analyzing only top-level packages at the same level as the `@SpringBootApplication` annotated class. These packages are expected to be functional layers rather than technical layers (controller, services, repositories etc.).
 
 ![image](https://github.com/user-attachments/assets/c66e6c52-ccd3-4410-bc0d-ac3941ce122d)
 
 ## Features
 
-- Scans Java projects to identify packages and their relationships
+- Scans Spring Boot projects to identify packages and their relationships
 - Calculates abstractness, instability, and distance from the main sequence for each package
 - Provides a web interface for easy project analysis
 - Visualizes results using an interactive scatter plot

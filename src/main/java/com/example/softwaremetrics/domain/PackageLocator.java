@@ -61,11 +61,6 @@ public class PackageLocator {
                 .collect(Collectors.toList());
     }
 
-    private String extractPackagePath(Path path) {
-        Path relativePath = path.getParent().relativize(path.getParent().getRoot().resolve("src/main/java"));
-        return relativePath.toString();
-    }
-
     private boolean isTopLevelPackage(String pkg, String mainPackage, int targetDepth) {
         return pkg.split("\\.").length == targetDepth &&
                 pkg.startsWith(mainPackage + ".") &&

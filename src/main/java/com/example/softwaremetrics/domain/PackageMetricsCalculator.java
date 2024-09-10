@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,7 +35,7 @@ public class PackageMetricsCalculator {
      * and 'Distance'.
      * @
      */
-    public Map<String, Map<String, Double>> calculateMetrics(Path projectPath, List<String> packages) {
+    public Map<String, PackageMetrics> calculateMetrics(Path projectPath, List<String> packages) {
         logger.info("Calculating metrics for {} packages", packages.size());
         Map<String, Set<String>> outgoingDependencies = new ConcurrentHashMap<>();
         Map<String, Set<String>> incomingDependencies = new ConcurrentHashMap<>();
@@ -61,12 +62,12 @@ public class PackageMetricsCalculator {
         });
     }
 
-    private Map<String, Map<String, Double>> computeMetrics(List<String> packages,
-                                                            Map<String, Set<String>> outgoingDependencies,
-                                                            Map<String, Set<String>> incomingDependencies,
-                                                            Map<String, Integer> abstractClassCount,
-                                                            Map<String, Integer> totalClassCount) {
-        Map<String, Map<String, Double>> metrics = new ConcurrentHashMap<>();
+    private Map<String, PackageMetrics> computeMetrics(List<String> packages,
+                                                       Map<String, Set<String>> outgoingDependencies,
+                                                       Map<String, Set<String>> incomingDependencies,
+                                                       Map<String, Integer> abstractClassCount,
+                                                       Map<String, Integer> totalClassCount) {
+        Map<String, PackageMetrics> metrics = new ConcurrentHashMap<>();
         for (String pkg : packages) {
             int ce = outgoingDependencies.getOrDefault(pkg, Set.of()).size();
             int ca = incomingDependencies.getOrDefault(pkg, Set.of()).size();
@@ -78,18 +79,24 @@ public class PackageMetricsCalculator {
 
             double distance = Math.abs(abstractness + instability - 1.0);
 
-            Map<String, Double> packageMetrics = new ConcurrentHashMap<>();
-            packageMetrics.put("Instability", Math.round(instability * 10000.0) / 10000.0);
-            packageMetrics.put("Abstractness", Math.round(abstractness * 10000.0) / 10000.0);
-            packageMetrics.put("Distance", Math.round(distance * 10000.0) / 10000.0);
-            metrics.put(pkg, packageMetrics);
+            PackageMetrics pkgMetrics = new PackageMetrics();
+            pkgMetrics.setPackageName(pkg);
+            pkgMetrics.setCe(ce);
+            pkgMetrics.setEfferentDependencies(new ArrayList<>(outgoingDependencies.get(pkg)));
+            pkgMetrics.setCa(ca);
+            pkgMetrics.setAfferentDependencies(new ArrayList<>(incomingDependencies.get(pkg)));
+            pkgMetrics.setAbstractClassCount(abstractClasses);
+            pkgMetrics.setTotalClassCount(totalClasses);
+            pkgMetrics.setAbstractness(abstractness);
+            pkgMetrics.setInstability(instability);
+            pkgMetrics.setDistance(distance);
+
+            metrics.put(pkg, pkgMetrics);
 
             logger.debug("Metrics for package {}: I={}, A={}, D={}, CE={}, CA={}",
-                    pkg, packageMetrics.get("Instability"),
-                    packageMetrics.get("Abstractness"),
-                    packageMetrics.get("Distance"),
-                    ce, ca);
+                    pkg, instability, abstractness, distance, ce, ca);
         }
+
         return metrics;
     }
 }

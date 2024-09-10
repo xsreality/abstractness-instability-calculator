@@ -1,6 +1,7 @@
 package com.example.softwaremetrics.application;
 
 import com.example.softwaremetrics.domain.PackageLocator;
+import com.example.softwaremetrics.domain.PackageMetrics;
 import com.example.softwaremetrics.domain.PackageMetricsCalculator;
 
 import org.slf4j.Logger;
@@ -31,7 +32,7 @@ public class SpringBootPackageScanner {
         this.packageMetricsCalculator = packageMetricsCalculator;
     }
 
-    public Map<String, Map<String, Double>> scanProject(String projectPath) {
+    public Map<String, PackageMetrics> scanProject(String projectPath) {
         logger.info("Starting project scan for path: {}", projectPath);
         Path path = Paths.get(projectPath);
 
@@ -49,8 +50,6 @@ public class SpringBootPackageScanner {
         }
         logger.debug("Top-level packages found: {}", topLevelPackages);
 
-        Map<String, Map<String, Double>> metrics = packageMetricsCalculator.calculateMetrics(path, topLevelPackages);
-        logger.info("Project scan completed successfully.");
-        return metrics;
+        return packageMetricsCalculator.calculateMetrics(path, topLevelPackages);
     }
 }

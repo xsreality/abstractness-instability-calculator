@@ -35,7 +35,6 @@ public class JavaClassAnalyzer {
      */
     boolean containsSpringBootApplication(Path file) {
         try (Stream<String> lines = Files.lines(file)) {
-            logger.debug("Analyzing file {}", file);
             return lines.anyMatch(line -> line.contains("@SpringBootApplication"));
         } catch (IOException e) {
             logger.error("Error reading file: {}", file, e);
@@ -62,14 +61,19 @@ public class JavaClassAnalyzer {
                         Map<String, Integer> abstractClassCount,
                         Map<String, Integer> totalClassCount) {
         try (var walk = Files.walk(projectPath)) {
-            walk.parallel()
+            walk
                     .filter(Files::isRegularFile)
                     .filter(p -> p.toString().endsWith(".class"))
+                    .filter(this::isNotTestClass)
                     .forEach(file -> analyzeClassFile(file, packages, outgoingDependencies, incomingDependencies, abstractClassCount, totalClassCount));
         } catch (IOException e) {
             logger.error("Error while analyzing classes for {}", projectPath, e);
             throw new IllegalStateException(e);
         }
+    }
+
+    private boolean isNotTestClass(Path path) {
+        return !path.toString().contains("target/test-classes");
     }
 
     private void analyzeClassFile(Path file, List<String> packages,
@@ -84,40 +88,48 @@ public class JavaClassAnalyzer {
 
             String className = Type.getObjectType(classNode.name).getClassName();
             String packageName = getPackageName(className);
+            String topLevelPackage = extractTopLevelPackageFrom(packageName, packages);
 
-            if (!packages.contains(packageName)) return;
+            if (topLevelPackage == null) return;
 
             logger.trace("Analyzing class: {}", className);
-            totalClassCount.merge(packageName, 1, Integer::sum);
+            totalClassCount.merge(topLevelPackage, 1, Integer::sum);
             if ((classNode.access & Opcodes.ACC_ABSTRACT) != 0 || (classNode.access & Opcodes.ACC_INTERFACE) != 0) {
-                abstractClassCount.merge(packageName, 1, Integer::sum);
+                abstractClassCount.merge(topLevelPackage, 1, Integer::sum);
             }
 
             for (MethodNode method : classNode.methods) {
-                analyzeMethod(method, packageName, packages, outgoingDependencies, incomingDependencies);
+                analyzeMethod(method, topLevelPackage, packages, outgoingDependencies, incomingDependencies);
             }
         } catch (IOException e) {
             logger.error("Error analyzing class file: {}", file, e);
         }
     }
 
-    private void analyzeMethod(MethodNode method, String packageName, List<String> packages,
+    private String extractTopLevelPackageFrom(String packageName, List<String> packages) {
+        return packages.stream()
+                .filter(packageName::startsWith)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private void analyzeMethod(MethodNode method, String topLevelPackage, List<String> packages,
                                Map<String, Set<String>> outgoingDependencies,
                                Map<String, Set<String>> incomingDependencies) {
         // Analyze method signature
         Type returnType = Type.getReturnType(method.desc);
-        addDependency(packageName, getPackageName(returnType.getClassName()), packages, outgoingDependencies, incomingDependencies);
+        addDependency(topLevelPackage, extractTopLevelPackageFrom(getPackageName(returnType.getClassName()), packages), packages, outgoingDependencies, incomingDependencies);
 
         // Analyze parameter types
         for (Type paramType : Type.getArgumentTypes(method.desc)) {
-            addDependency(packageName, getPackageName(paramType.getClassName()), packages, outgoingDependencies, incomingDependencies);
+            addDependency(topLevelPackage, extractTopLevelPackageFrom(getPackageName(paramType.getClassName()), packages), packages, outgoingDependencies, incomingDependencies);
         }
 
         // Analyze exceptions
         method.exceptions.forEach(exception -> {
             String exceptionName = Type.getObjectType(exception).getClassName();
             String exceptionPackage = getPackageName(exceptionName);
-            addDependency(packageName, exceptionPackage, packages, outgoingDependencies, incomingDependencies);
+            addDependency(topLevelPackage, extractTopLevelPackageFrom(exceptionPackage, packages), packages, outgoingDependencies, incomingDependencies);
         });
 
         // Analyze method body
@@ -125,15 +137,15 @@ public class JavaClassAnalyzer {
             if (instruction instanceof org.objectweb.asm.tree.MethodInsnNode methodInsn) {
                 String methodOwner = Type.getObjectType(methodInsn.owner).getClassName();
                 String methodPackage = getPackageName(methodOwner);
-                addDependency(packageName, methodPackage, packages, outgoingDependencies, incomingDependencies);
+                addDependency(topLevelPackage, methodPackage, packages, outgoingDependencies, incomingDependencies);
             } else if (instruction instanceof org.objectweb.asm.tree.FieldInsnNode fieldInsn) {
                 String fieldOwner = Type.getObjectType(fieldInsn.owner).getClassName();
                 String fieldPackage = getPackageName(fieldOwner);
-                addDependency(packageName, fieldPackage, packages, outgoingDependencies, incomingDependencies);
+                addDependency(topLevelPackage, fieldPackage, packages, outgoingDependencies, incomingDependencies);
             } else if (instruction instanceof org.objectweb.asm.tree.TypeInsnNode typeInsn) {
                 String typeName = Type.getObjectType(typeInsn.desc).getClassName();
                 String typePackage = getPackageName(typeName);
-                addDependency(packageName, typePackage, packages, outgoingDependencies, incomingDependencies);
+                addDependency(topLevelPackage, typePackage, packages, outgoingDependencies, incomingDependencies);
             }
         });
 
@@ -141,7 +153,7 @@ public class JavaClassAnalyzer {
         if (method.localVariables != null) {
             for (org.objectweb.asm.tree.LocalVariableNode localVar : method.localVariables) {
                 String localVarType = Type.getType(localVar.desc).getClassName();
-                addDependency(packageName, getPackageName(localVarType), packages, outgoingDependencies, incomingDependencies);
+                addDependency(topLevelPackage, extractTopLevelPackageFrom(getPackageName(localVarType), packages), packages, outgoingDependencies, incomingDependencies);
             }
         }
     }

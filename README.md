@@ -6,7 +6,7 @@ It follows the principles of Spring Modulith by analyzing only top-level package
 
 A [Nix Flake](#nix-flake) is provided to help build on systems with outdated java and maven installations.
 
-![image](https://github.com/user-attachments/assets/c66e6c52-ccd3-4410-bc0d-ac3941ce122d)
+![screenshot](https://github.com/user-attachments/assets/5e84eb27-04d6-475c-8a9b-97b36d649ed6)
 
 ## Features
 

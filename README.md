@@ -4,7 +4,7 @@ This application calculates abstractness and instability metrics for Java, Sprin
 
 It follows the principles of Spring Modulith by analyzing only top-level packages at the same level as the `@SpringBootApplication` annotated class. These packages are expected to be functional layers rather than technical layers (controller, services, repositories etc.).
 
-![image](https://github.com/user-attachments/assets/c66e6c52-ccd3-4410-bc0d-ac3941ce122d)
+![screenshot](https://github.com/user-attachments/assets/5e84eb27-04d6-475c-8a9b-97b36d649ed6)
 
 ## Features
 

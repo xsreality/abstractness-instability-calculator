@@ -2,10 +2,17 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <body>
     <div th:fragment="graph">
-        <div class="chart-container">
-            <canvas id="metricsChart"></canvas>
+        <div class="container">
+            <div class="chart-container">
+                <canvas id="metricsChart"></canvas>
+            </div>
+            <div class="package-details">
+                <h3>Package Details</h3>
+                <div id="packageDetailsContent">
+                    <p>Click on a data point to view package details.</p>
+                </div>
+            </div>
         </div>
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script th:inline="javascript">
             (function() {
                 const metrics = /*[[${metrics}]]*/ {};
@@ -28,10 +35,10 @@
                         {
                             label: 'Packages',
                             data: Object.entries(metrics).map(([pkg, values]) => ({
-                                x: values.Instability,
-                                y: values.Abstractness,
+                                x: values.instability,
+                                y: values.abstractness,
                                 packageName: pkg,
-                                distance: values.Distance
+                                distance: values.distance
                             })),
                             backgroundColor: (context) => {
                                 const distance = context.raw.distance;
@@ -50,7 +57,6 @@
                         const ctx = chart.ctx;
                         const xAxis = chart.scales.x;
                         const yAxis = chart.scales.y;
-                        const chartArea = chart.chartArea;
 
                         const drawSemicircle = (centerX, centerY, radius, startAngle, endAngle, color) => {
                             ctx.beginPath();
@@ -87,7 +93,8 @@
                     data: data,
                     options: {
                         responsive: true,
-                        maintainAspectRatio: false,
+                        maintainAspectRatio: true,
+                        aspectRatio: 1,
                         scales: {
                             x: {
                                 type: 'linear',
@@ -142,34 +149,51 @@
                                 }
                             }
                         },
-                        aspectRatio: 1  // This ensures the chart is square
+                        onClick: (event, elements) => {
+                            if (elements.length > 0) {
+                                const dataIndex = elements[0].index;
+                                const packageName = data.datasets[1].data[dataIndex].packageName;
+                                displayPackageDetails(metrics[packageName]);
+                            }
+                        }
                     },
                     plugins: [zonePlugin]
                 };
 
-                // Destroy existing chart if it exists
-                if (window.metricsChart instanceof Chart) {
-                    window.metricsChart.destroy();
-                }
+                // Create the chart
                 window.metricsChart = new Chart(ctx, config);
+
+                function displayPackageDetails(details) {
+                    const content = document.getElementById('packageDetailsContent');
+                    content.innerHTML = `
+                        <h4>${details.packageName}</h4>
+                        <p class="tooltip"><i class="fas fa-cogs"></i><strong>Ce (Efferent Couplings):</strong> ${details.ce}
+                            <span class="tooltiptext">The number of classes in other packages that the classes in a package depend upon is an indicator of the package's dependence on externalities.</span>
+                        </p>
+                        <p class="tooltip"><i class="fas fa-link"></i><strong>Efferent Dependencies:</strong> ${details.efferentDependencies.join(', ')}
+                            <span class="tooltiptext">Dependencies that this package depends on.</span>
+                        </p>
+                        <p class="tooltip"><i class="fas fa-cogs"></i><strong>Ca (Afferent Couplings):</strong> ${details.ca}
+                            <span class="tooltiptext">The number of classes in other packages that depend upon classes within the package is an indicator of the package's responsibility.</span>
+                        </p>
+                        <p class="tooltip"><i class="fas fa-link"></i><strong>Afferent Dependencies:</strong> ${details.afferentDependencies.join(', ')}
+                            <span class="tooltiptext">Dependencies that depend on this package.</span>
+                        </p>
+                        <p><i class="fas fa-cube"></i><strong>Abstract Classes:</strong> ${details.abstractClassCount}</p>
+                        <p><i class="fas fa-cubes"></i><strong>Total Classes:</strong> ${details.totalClassCount}</p>
+                        <p class="tooltip"><i class="fas fa-chart-line"></i><strong>Abstractness (A):</strong> ${details.abstractness.toFixed(4)}
+                            <span class="tooltiptext">The ratio of the number of abstract classes (and interfaces) in the analyzed package to the total number of classes in the analyzed package.</span>
+                        </p>
+                        <p class="tooltip"><i class="fas fa-chart-line"></i><strong>Instability (I):</strong> ${details.instability.toFixed(4)}
+                            <span class="tooltiptext">The ratio of efferent coupling (Ce) to total coupling (Ce + Ca) such that I = Ce / (Ce + Ca). This metric is an indicator of the package's resilience to change.</span>
+                        </p>
+                        <p class="tooltip"><i class="fas fa-location"></i><strong>Distance from Main Sequence (D):</strong> ${details.distance.toFixed(4)}
+                            <span class="tooltiptext">The perpendicular distance of a package from the idealized line A + I = 1. D is calculated as D = | A + I - 1 |.</span>
+                        </p>
+                    `;
+                }
             })();
         </script>
-        <style>
-            .chart-container {
-                position: relative;
-                height: 60vh;
-                width: 60vh;
-                max-width: 100%;
-                margin: 20px auto;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-            }
-            canvas {
-                max-width: 100%;
-                max-height: 100%;
-            }
-        </style>
     </div>
     <div th:fragment="error">
         <p th:text="${error}" style="color: #e74c3c; font-weight: bold; text-align: center; margin-top: 20px;"></p>

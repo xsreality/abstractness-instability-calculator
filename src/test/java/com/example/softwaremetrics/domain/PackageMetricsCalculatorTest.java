@@ -41,18 +41,18 @@ class PackageMetricsCalculatorTest {
 
         List<String> packages = Arrays.asList("com.example", "com.example.service", "com.example.model");
 
-        Map<String, Map<String, Double>> metrics = calculator.calculateMetrics(tempDir, packages);
+        Map<String, PackageMetrics> metrics = calculator.calculateMetrics(tempDir, packages);
 
         logger.debug("Calculated metrics: {}", metrics);
 
         assertNotNull(metrics, "Metrics should not be null");
         assertEquals(3, metrics.size(), "Should have metrics for 3 packages");
 
-        Map<String, Double> exampleMetrics = metrics.get("com.example");
+        PackageMetrics exampleMetrics = metrics.get("com.example");
         assertNotNull(exampleMetrics, "Metrics for com.example should exist");
-        assertEquals(1.0, exampleMetrics.get("Instability"), "Instability for com.example should be 1.0");
-        assertEquals(0.25, exampleMetrics.get("Abstractness"), "Abstractness for com.example should be 0.25");
-        assertEquals(0.25, exampleMetrics.get("Distance"), "Distance for com.example should be 0.25");
+        assertEquals(1.0, exampleMetrics.getInstability(), "Instability for com.example should be 1.0");
+        assertEquals(0.25, exampleMetrics.getAbstractness(), "Abstractness for com.example should be 0.25");
+        assertEquals(0.25, exampleMetrics.getDistance(), "Distance for com.example should be 0.25");
 
         logger.info("testCalculateMetrics completed successfully");
     }

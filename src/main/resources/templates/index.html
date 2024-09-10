@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!--suppress CssUnusedSymbol -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -11,12 +12,12 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <style>
         body {
             font-family: 'Roboto', sans-serif;
             line-height: 1.6;
             color: #333;
-            max-width: 800px;
             margin: 0 auto;
             padding: 20px;
             background-color: #f5f5f5;
@@ -31,6 +32,8 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 800px;
+            margin: 0 auto;
         }
         label {
             display: block;
@@ -60,6 +63,77 @@
         }
         #result {
             margin-top: 30px;
+        }
+        .container {
+            display: flex;
+            justify-content: space-between;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .chart-container {
+            flex: 0 0 60%;
+            aspect-ratio: 1 / 1;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        .package-details {
+            flex: 0 0 35%;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 20px;
+            overflow-y: auto;
+            max-height: calc(100vh - 40px);
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+        }
+        h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        #packageDetailsContent {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .package-details p {
+            margin: 10px 0;
+        }
+        .package-details p strong {
+            display: inline-block;
+            width: 180px;
+        }
+        .package-details p i {
+            margin-right: 15px;
+            color: #3498db;
+        }
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 200px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
         }
     </style>
 </head>

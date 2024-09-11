@@ -29,32 +29,32 @@ public class PackageMetricsCalculator {
      * Calculates various metrics for the given list of packages within a project.
      *
      * @param projectPath The path to the root directory of the project.
-     * @param packages    A list of package names to analyze.
+     * @param modulePackages    A list of package names to analyze.
      * @return A map where the key is the package name and the value is another map
      * containing calculated metrics such as 'Instability', 'Abstractness'
      * and 'Distance'.
      * @
      */
-    public Map<String, PackageMetrics> calculateMetrics(Path projectPath, List<String> packages) {
-        logger.info("Calculating metrics for {} packages", packages.size());
+    public Map<String, PackageMetrics> calculateMetrics(Path projectPath, List<String> modulePackages) {
+        logger.info("Calculating metrics for {} packages", modulePackages.size());
         Map<String, Set<String>> outgoingDependencies = new ConcurrentHashMap<>();
         Map<String, Set<String>> incomingDependencies = new ConcurrentHashMap<>();
         Map<String, Integer> abstractClassCount = new ConcurrentHashMap<>();
         Map<String, Integer> totalClassCount = new ConcurrentHashMap<>();
 
-        initializeMaps(packages, outgoingDependencies, incomingDependencies, abstractClassCount, totalClassCount);
+        initializeMaps(modulePackages, outgoingDependencies, incomingDependencies, abstractClassCount, totalClassCount);
 
-        javaClassAnalyzer.analyzeClasses(projectPath, packages, outgoingDependencies, incomingDependencies, abstractClassCount, totalClassCount);
+        javaClassAnalyzer.analyzeClasses(projectPath, modulePackages, outgoingDependencies, incomingDependencies, abstractClassCount, totalClassCount);
 
         logger.debug("Dependency analysis completed. Calculating final metrics.");
-        return computeMetrics(packages, outgoingDependencies, incomingDependencies, abstractClassCount, totalClassCount);
+        return computeMetrics(modulePackages, outgoingDependencies, incomingDependencies, abstractClassCount, totalClassCount);
     }
 
-    private void initializeMaps(List<String> packages, Map<String, Set<String>> outgoingDependencies,
+    private void initializeMaps(List<String> modulePackages, Map<String, Set<String>> outgoingDependencies,
                                 Map<String, Set<String>> incomingDependencies,
                                 Map<String, Integer> abstractClassCount,
                                 Map<String, Integer> totalClassCount) {
-        packages.forEach(pkg -> {
+        modulePackages.forEach(pkg -> {
             outgoingDependencies.put(pkg, ConcurrentHashMap.newKeySet());
             incomingDependencies.put(pkg, ConcurrentHashMap.newKeySet());
             abstractClassCount.put(pkg, 0);
@@ -62,13 +62,13 @@ public class PackageMetricsCalculator {
         });
     }
 
-    private Map<String, PackageMetrics> computeMetrics(List<String> packages,
+    private Map<String, PackageMetrics> computeMetrics(List<String> modulePackages,
                                                        Map<String, Set<String>> outgoingDependencies,
                                                        Map<String, Set<String>> incomingDependencies,
                                                        Map<String, Integer> abstractClassCount,
                                                        Map<String, Integer> totalClassCount) {
         Map<String, PackageMetrics> metrics = new ConcurrentHashMap<>();
-        for (String pkg : packages) {
+        for (String pkg : modulePackages) {
             int ce = outgoingDependencies.getOrDefault(pkg, Set.of()).size();
             int ca = incomingDependencies.getOrDefault(pkg, Set.of()).size();
             double instability = (ce + ca == 0) ? 0.0 : (double) ce / (ce + ca);
@@ -82,9 +82,9 @@ public class PackageMetricsCalculator {
             PackageMetrics pkgMetrics = new PackageMetrics();
             pkgMetrics.setPackageName(pkg);
             pkgMetrics.setCe(ce);
-            pkgMetrics.setEfferentDependencies(new ArrayList<>(outgoingDependencies.get(pkg)));
+            pkgMetrics.setEfferentDependencies(new ArrayList<>(outgoingDependencies.getOrDefault(pkg, Set.of())));
             pkgMetrics.setCa(ca);
-            pkgMetrics.setAfferentDependencies(new ArrayList<>(incomingDependencies.get(pkg)));
+            pkgMetrics.setAfferentDependencies(new ArrayList<>(incomingDependencies.getOrDefault(pkg, Set.of())));
             pkgMetrics.setAbstractClassCount(abstractClasses);
             pkgMetrics.setTotalClassCount(totalClasses);
             pkgMetrics.setAbstractness(abstractness);

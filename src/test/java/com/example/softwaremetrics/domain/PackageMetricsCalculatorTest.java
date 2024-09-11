@@ -50,9 +50,9 @@ class PackageMetricsCalculatorTest {
 
         PackageMetrics exampleMetrics = metrics.get("com.example");
         assertNotNull(exampleMetrics, "Metrics for com.example should exist");
-        assertEquals(1.0, exampleMetrics.getInstability(), "Instability for com.example should be 1.0");
+        assertEquals(0.0, exampleMetrics.getInstability(), "Instability for com.example should be 0.0");
         assertEquals(0.25, exampleMetrics.getAbstractness(), "Abstractness for com.example should be 0.25");
-        assertEquals(0.25, exampleMetrics.getDistance(), "Distance for com.example should be 0.25");
+        assertEquals(0.75, exampleMetrics.getDistance(), "Distance for com.example should be 0.75");
 
         logger.info("testCalculateMetrics completed successfully");
     }

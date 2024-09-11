@@ -43,13 +43,13 @@ public class SpringBootPackageScanner {
         }
         logger.debug("Main package found: {}", mainPackage);
 
-        List<String> topLevelPackages = packageLocator.findTopLevelPackages(path, mainPackage);
-        if (topLevelPackages.isEmpty()) {
+        List<String> applicationModulePackages = packageLocator.findApplicationModulePackages(path, mainPackage);
+        if (applicationModulePackages.isEmpty()) {
             logger.error("No subpackages found.");
             throw new IllegalArgumentException("No subpackages found.");
         }
-        logger.debug("Top-level packages found: {}", topLevelPackages);
+        logger.debug("Top-level packages found: {}", applicationModulePackages);
 
-        return packageMetricsCalculator.calculateMetrics(path, topLevelPackages);
+        return packageMetricsCalculator.calculateMetrics(path, applicationModulePackages);
     }
 }

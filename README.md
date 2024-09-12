@@ -4,6 +4,8 @@ This application calculates abstractness and instability metrics for Java, Sprin
 
 It follows the principles of Spring Modulith by analyzing only top-level packages at the same level as the `@SpringBootApplication` annotated class. These packages are expected to be functional layers rather than technical layers (controller, services, repositories etc.).
 
+A [Nix Flake](#nix-flake) is provided to help build on systems with outdated java and maven installations.
+
 ![screenshot](https://github.com/user-attachments/assets/5e84eb27-04d6-475c-8a9b-97b36d649ed6)
 
 ## Features
@@ -49,6 +51,23 @@ It follows the principles of Spring Modulith by analyzing only top-level package
 4. Click "Scan" to analyze the project
 
 5. View the results in the interactive scatter plot
+
+## Nix Flake
+
+1. Enter development environment
+   ```
+   nix develop
+   ```
+
+2. Build application
+   ```
+   mvn clean package -DskipTests
+   ```
+
+3. Run application
+   ```
+   java -jar target/abstractness-instability-calculator*.jar
+   ```
 
 ## Understanding the Results
 

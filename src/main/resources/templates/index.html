@@ -158,15 +158,93 @@
             padding: 5px;
             margin-bottom: 10px;
         }
+
+        /* New styles for tabs */
+        #tabContainer {
+            display: none;
+            margin-top: 30px;
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+        }
+        .tab {
+            padding: 10px 20px;
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-right: 5px;
+            border-top-left-radius: 5px;
+            border-top-right-radius: 5px;
+        }
+        .tab:hover {
+            background-color: #e0e0e0;
+        }
+        .tab.active {
+            background-color: #fff;
+            border-bottom: 1px solid #fff;
+            margin-bottom: -1px;
+        }
+        .tab-content {
+            display: none;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-top: none;
+            background-color: #fff;
+        }
+        .tab-content.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
     <h1>Abstractness and Instability Metrics Calculator</h1>
-    <form hx-post="/scan" hx-target="#result">
+    <form hx-post="/scan" hx-target="#result" hx-on::after-request="showTabs()">
         <label for="path">Project Path:</label>
         <input type="text" id="path" name="path" required placeholder="Enter the project path...">
         <button type="submit">Scan</button>
     </form>
-    <div id="result"></div>
+
+    <div id="tabContainer">
+        <div class="tabs">
+            <div class="tab active" onclick="openTab(event, 'metricsTab')">Metrics Chart</div>
+            <div class="tab" onclick="openTab(event, 'futureTab1')">Future Tab 1</div>
+            <div class="tab" onclick="openTab(event, 'futureTab2')">Future Tab 2</div>
+        </div>
+
+        <div id="metricsTab" class="tab-content active">
+            <div id="result"></div>
+        </div>
+
+        <div id="futureTab1" class="tab-content">
+            <p>Content for Future Tab 1 will go here.</p>
+        </div>
+
+        <div id="futureTab2" class="tab-content">
+            <p>Content for Future Tab 2 will go here.</p>
+        </div>
+    </div>
+
+    <script>
+        function openTab(evt, tabName) {
+            var i, tabContent, tabLinks;
+            tabContent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabContent.length; i++) {
+                tabContent[i].style.display = "none";
+            }
+            tabLinks = document.getElementsByClassName("tab");
+            for (i = 0; i < tabLinks.length; i++) {
+                tabLinks[i].className = tabLinks[i].className.replace(" active", "");
+            }
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.className += " active";
+        }
+
+        function showTabs() {
+            document.getElementById('tabContainer').style.display = 'block';
+        }
+    </script>
 </body>
 </html>

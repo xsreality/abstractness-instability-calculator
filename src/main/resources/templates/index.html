@@ -204,32 +204,44 @@
             align-items: stretch;
             height: 100%;
         }
-        #packageSelect {
+        .dropdown-container {
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
             margin-bottom: 20px;
         }
-        #dependencyVisualization {
-            flex-grow: 1;
-            min-height: 500px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+        .select-wrapper {
             position: relative;
+            display: inline-block;
+            width: 300px;
+            margin-right: 20px;
         }
-
-        #dependencyVisualization svg {
-            position: absolute;
-            top: 0;
-            left: 0;
-        }
-
-        #dependencyVisualization input {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            z-index: 1;
-            width: calc(100% - 20px);
-            padding: 5px;
+        .select-wrapper select {
+            background-color: #fff;
             border: 1px solid #ddd;
             border-radius: 4px;
+            padding: 10px 30px 10px 10px;
+            width: 100%;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .select-wrapper select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+        }
+        .select-wrapper::after {
+            /*content: "\25BC";*/
+            position: absolute;
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+            pointer-events: none;
+            color: #333;
+        }
+        .select-wrapper select option {
+            background-color: #fff;
+            color: #333;
         }
     </style>
 </head>
@@ -245,7 +257,6 @@
         <div class="tabs">
             <div class="tab active" onclick="openTab(event, 'metricsTab')">Metrics Chart</div>
             <div class="tab" onclick="openTab(event, 'packageDependenciesTab')">Dependency Visualization</div>
-            <div class="tab" onclick="openTab(event, 'futureTab2')">Future Tab 2</div>
         </div>
 
         <div id="metricsTab" class="tab-content active">
@@ -254,19 +265,21 @@
 
         <div id="packageDependenciesTab" class="tab-content">
             <div id="packageDependenciesContent">
-                <select id="packageSelect" onchange="visualizePackageDependencies()">
-                    <option value="">Select a package</option>
-                </select>
-                <select id="dependencyTypeSelect" onchange="visualizePackageDependencies()">
-                    <option value="efferent">Efferent Dependencies</option>
-                    <option value="afferent">Afferent Dependencies</option>
-                </select>
+                <div class="dropdown-container">
+                    <div class="select-wrapper">
+                        <select id="packageSelect" onchange="visualizePackageDependencies()">
+                            <option value="">Select a package</option>
+                        </select>
+                    </div>
+                    <div class="select-wrapper">
+                        <select id="dependencyTypeSelect" onchange="visualizePackageDependencies()">
+                            <option value="efferent">Efferent Dependencies</option>
+                            <option value="afferent">Afferent Dependencies</option>
+                        </select>
+                    </div>
+                </div>
                 <div id="dependencyVisualization"></div>
             </div>
-        </div>
-
-        <div id="futureTab2" class="tab-content">
-            <p>Content for Future Tab 2 will go here.</p>
         </div>
     </div>
 
@@ -415,15 +428,51 @@
                 .insert("div", ":first-child")
                 .append("input")
                 .attr("type", "text")
-                .attr("placeholder", "Search packages...")
-                .style("width", "100%")
+                .attr("placeholder", "Search classes...")
+                .style("width", "300px")
                 .style("margin-bottom", "10px")
                 .on("input", function() {
                     const term = this.value.toLowerCase();
-                    node.attr("opacity", d => d.id.toLowerCase().includes(term) ? 1 : 0.1);
-                    label.attr("opacity", d => d.id.toLowerCase().includes(term) ? 1 : 0.1);
-                    link.attr("opacity", d => d.source.id.toLowerCase().includes(term) || d.target.id.toLowerCase().includes(term) ? 1 : 0.1);
+                    highlightMatchingNodes(term);
                 });
+
+            function highlightMatchingNodes(term) {
+                // Reset all nodes and links
+                node.attr("opacity", 0.3).attr("r", d => 10 - d.level);
+                label.attr("opacity", 0.3);
+                link.attr("opacity", 0.1).attr("stroke-width", 1);
+
+                if (term === "") {
+                    node.attr("opacity", 1);
+                    label.attr("opacity", 1);
+                    link.attr("opacity", 0.6);
+                    return;
+                }
+
+                const matchingNodes = nodes.filter(d => d.id.toLowerCase().includes(term));
+                const highlightedNodes = new Set();
+                const highlightedLinks = new Set();
+
+                matchingNodes.forEach(matchNode => {
+                    let currentNode = matchNode;
+                    while (currentNode) {
+                        highlightedNodes.add(currentNode.id);
+                        const parentLink = links.find(l => l.target === currentNode);
+                        if (parentLink) {
+                            highlightedLinks.add(parentLink);
+                            currentNode = parentLink.source;
+                        } else {
+                            break;
+                        }
+                    }
+                });
+
+                node.attr("opacity", d => highlightedNodes.has(d.id) ? 1 : 0.3)
+                    .attr("r", d => highlightedNodes.has(d.id) ? (15 - d.level) : (10 - d.level));
+                label.attr("opacity", d => highlightedNodes.has(d.id) ? 1 : 0.3);
+                link.attr("opacity", d => highlightedLinks.has(d) ? 1 : 0.1)
+                    .attr("stroke-width", d => highlightedLinks.has(d) ? 2 : 1);
+            }
 
             // Add legend
             const legend = svg.append("g")

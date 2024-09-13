@@ -14,6 +14,52 @@
             </div>
         </div>
         <script th:inline="javascript">
+            // Define these functions in the global scope
+            function toggleDependencyGroup(element) {
+                const list = element.nextElementSibling;
+                list.style.display = list.style.display === 'none' ? 'block' : 'none';
+            }
+
+            function showMoreDependencies(element, type) {
+                const list = element.parentElement;
+                const group = list.parentElement;
+                const allDeps = groupDependencies(window.currentDetails[type + 'Dependencies'])[group.firstElementChild.textContent.split(' ')[0]];
+                list.innerHTML = allDeps.map(dep => `<li>${dep}</li>`).join('');
+            }
+
+            function filterDependencies(type) {
+                const input = document.getElementById(type + 'Search');
+                const filter = input.value.toLowerCase();
+                const lists = document.getElementsByClassName(type + '-list');
+                
+                for (const list of lists) {
+                    const items = list.getElementsByTagName('li');
+                    let visibleCount = 0;
+                    for (const item of items) {
+                        if (item.classList.contains('show-more')) continue;
+                        if (item.textContent.toLowerCase().indexOf(filter) > -1) {
+                            item.style.display = "";
+                            visibleCount++;
+                        } else {
+                            item.style.display = "none";
+                        }
+                    }
+                    list.parentElement.style.display = visibleCount > 0 ? "" : "none";
+                }
+            }
+
+            function groupDependencies(dependencies) {
+                const grouped = {};
+                for (const dep of dependencies) {
+                    const topLevelPackage = dep.split('.').slice(0, 3).join('.');
+                    if (!grouped[topLevelPackage]) {
+                        grouped[topLevelPackage] = [];
+                    }
+                    grouped[topLevelPackage].push(dep);
+                }
+                return grouped;
+            }
+
             (function() {
                 const metrics = /*[[${metrics}]]*/ {};
                 const ctx = document.getElementById('metricsChart').getContext('2d');
@@ -170,14 +216,8 @@
                         <p class="tooltip"><i class="fas fa-cogs"></i><strong>Ce (Efferent Couplings):</strong> ${details.ce}
                             <span class="tooltiptext">The number of classes in other packages that the classes in a package depend upon is an indicator of the package's dependence on externalities.</span>
                         </p>
-                        <p class="tooltip"><i class="fas fa-link"></i><strong>Efferent Dependencies:</strong> ${details.efferentDependencies.join(', ')}
-                            <span class="tooltiptext">Dependencies that this package depends on.</span>
-                        </p>
                         <p class="tooltip"><i class="fas fa-cogs"></i><strong>Ca (Afferent Couplings):</strong> ${details.ca}
                             <span class="tooltiptext">The number of classes in other packages that depend upon classes within the package is an indicator of the package's responsibility.</span>
-                        </p>
-                        <p class="tooltip"><i class="fas fa-link"></i><strong>Afferent Dependencies:</strong> ${details.afferentDependencies.join(', ')}
-                            <span class="tooltiptext">Dependencies that depend on this package.</span>
                         </p>
                         <p><i class="fas fa-cube"></i><strong>Abstract Classes:</strong> ${details.abstractClassCount}</p>
                         <p><i class="fas fa-cubes"></i><strong>Total Classes:</strong> ${details.totalClassCount}</p>
@@ -190,7 +230,37 @@
                         <p class="tooltip"><i class="fas fa-location"></i><strong>Distance from Main Sequence (D):</strong> ${details.distance.toFixed(4)}
                             <span class="tooltiptext">The perpendicular distance of a package from the idealized line A + I = 1. D is calculated as D = | A + I - 1 |.</span>
                         </p>
+                        <div class="dependencies-container">
+                            <h5>Efferent Dependencies</h5>
+                            <input type="text" id="efferentSearch" placeholder="Search efferent dependencies..." onkeyup="filterDependencies('efferent')">
+                            ${createDependencyList(details.efferentDependencies, 'efferent')}
+                            <h5>Afferent Dependencies</h5>
+                            <input type="text" id="afferentSearch" placeholder="Search afferent dependencies..." onkeyup="filterDependencies('afferent')">
+                            ${createDependencyList(details.afferentDependencies, 'afferent')}
+                        </div>
                     `;
+                    window.currentDetails = details;
+                }
+
+                function createDependencyList(dependencies, type) {
+                    const groupedDeps = groupDependencies(dependencies);
+                    let html = '';
+                    for (const [topLevelPackage, deps] of Object.entries(groupedDeps)) {
+                        html += `
+                            <div class="dependency-group">
+                                <h6 onclick="toggleDependencyGroup(this)">${topLevelPackage} (${deps.length})</h6>
+                                <ul class="dependency-list ${type}-list" style="display: none;">
+                                    ${deps.slice(0, 10).map(dep => `<li>${dep}</li>`).join('')}
+                                    ${deps.length > 10 ? `
+                                        <li class="show-more" onclick="showMoreDependencies(this, '${type}')">
+                                            Show ${deps.length - 10} more...
+                                        </li>
+                                    ` : ''}
+                                </ul>
+                            </div>
+                        `;
+                    }
+                    return html;
                 }
             })();
         </script>

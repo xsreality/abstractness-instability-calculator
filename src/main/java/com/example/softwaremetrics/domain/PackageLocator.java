@@ -38,7 +38,7 @@ public class PackageLocator {
                 .orElse(null);
     }
 
-    public List<String> findTopLevelPackages(Path projectPath, String mainPackage) {
+    public List<String> findApplicationModulePackages(Path projectPath, String mainPackage) {
         logger.debug("Finding top-level packages for main package: {} in project path: {}", mainPackage, projectPath);
         Path srcMainJavaPath = projectPath.resolve("src/main/java");
         if (!Files.exists(srcMainJavaPath)) {

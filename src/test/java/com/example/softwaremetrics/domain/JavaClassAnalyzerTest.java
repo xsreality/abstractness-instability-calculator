@@ -15,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@SuppressWarnings("SameParameterValue")
 class JavaClassAnalyzerTest {
 
     private JavaClassAnalyzer javaClassAnalyzer;
@@ -56,6 +57,7 @@ class JavaClassAnalyzerTest {
         createTestClass(srcMainJava, "com/example/anothersubpackage/ClassA.class", "com.example.anothersubpackage.ClassA", false, "com.example.subpackage.ClassC");
         createTestClass(srcMainJava, "com/example/anothersubpackage/ClassB.class", "com.example.anothersubpackage.ClassB", true, "com.example.subpackage.ClassC");
         createTestClass(srcMainJava, "com/example/subpackage/ClassC.class", "com.example.subpackage.ClassC", false, "com.example.anothersubpackage.ClassA");
+        createTestClassWithJavaLangDependency(srcMainJava, "com/example/anothersubpackage/ClassD.class", "com.example.anothersubpackage.ClassD", false);
 
         // Prepare input for analyzeClasses
         List<String> packages = Arrays.asList("com.example.anothersubpackage", "com.example.subpackage");
@@ -68,20 +70,23 @@ class JavaClassAnalyzerTest {
         javaClassAnalyzer.analyzeClasses(tempDir, packages, outgoingDependencies, incomingDependencies, abstractClassCount, totalClassCount);
 
         // Verify the results
-        assertEquals(2, totalClassCount.get("com.example.anothersubpackage"));
+        assertEquals(3, totalClassCount.get("com.example.anothersubpackage"));
         assertEquals(1, abstractClassCount.get("com.example.anothersubpackage"));
         assertEquals(1, totalClassCount.get("com.example.subpackage"));
         assertNull(abstractClassCount.get("com.example.subpackage"));
 
-        assertTrue(outgoingDependencies.get("com.example.anothersubpackage").contains("com.example.subpackage"));
-        assertTrue(outgoingDependencies.get("com.example.subpackage").contains("com.example.anothersubpackage"));
-        assertTrue(incomingDependencies.get("com.example.anothersubpackage").contains("com.example.subpackage"));
-        assertTrue(incomingDependencies.get("com.example.subpackage").contains("com.example.anothersubpackage"));
+        assertTrue(outgoingDependencies.get("com.example.anothersubpackage").contains("com.example.subpackage.ClassC"));
+        assertTrue(outgoingDependencies.get("com.example.subpackage").contains("com.example.anothersubpackage.ClassA"));
+        assertTrue(incomingDependencies.get("com.example.anothersubpackage").contains("com.example.subpackage.ClassC"));
+        assertTrue(incomingDependencies.get("com.example.subpackage").contains("com.example.anothersubpackage.ClassA"));
 
         assertEquals(1, outgoingDependencies.get("com.example.anothersubpackage").size());
         assertEquals(1, outgoingDependencies.get("com.example.subpackage").size());
         assertEquals(1, incomingDependencies.get("com.example.anothersubpackage").size());
-        assertEquals(1, incomingDependencies.get("com.example.subpackage").size());
+        assertEquals(2, incomingDependencies.get("com.example.subpackage").size());
+
+        // Verify that java.lang dependencies are not included
+        assertFalse(outgoingDependencies.get("com.example.anothersubpackage").contains("java.lang.String"));
     }
 
     private void createTestClass(Path baseDir, String classPath, String className, boolean isAbstract, String dependencyClass) throws IOException {
@@ -107,6 +112,35 @@ class JavaClassAnalyzerTest {
         mv.visitInsn(Opcodes.POP);
         mv.visitInsn(Opcodes.RETURN);
         mv.visitMaxs(2, 1);
+        mv.visitEnd();
+
+        cw.visitEnd();
+
+        Path fullPath = baseDir.resolve(classPath);
+        Files.createDirectories(fullPath.getParent());
+        Files.write(fullPath, cw.toByteArray());
+    }
+
+    private void createTestClassWithJavaLangDependency(Path baseDir, String classPath, String className, boolean isAbstract) throws IOException {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V1_8, isAbstract ? Opcodes.ACC_PUBLIC + Opcodes.ACC_ABSTRACT : Opcodes.ACC_PUBLIC, 
+                 className.replace('.', '/'), null, "java/lang/Object", null);
+
+        // Add a constructor
+        MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
+        mv.visitCode();
+        mv.visitVarInsn(Opcodes.ALOAD, 0);
+        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
+        mv.visitInsn(Opcodes.RETURN);
+        mv.visitMaxs(1, 1);
+        mv.visitEnd();
+
+        // Add a method that uses java.lang.String
+        mv = cw.visitMethod(Opcodes.ACC_PUBLIC, "someMethod", "()Ljava/lang/String;", null, null);
+        mv.visitCode();
+        mv.visitLdcInsn("Hello, World!");
+        mv.visitInsn(Opcodes.ARETURN);
+        mv.visitMaxs(1, 1);
         mv.visitEnd();
 
         cw.visitEnd();

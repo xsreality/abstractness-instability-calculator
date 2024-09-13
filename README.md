@@ -2,11 +2,11 @@
 
 This application calculates abstractness and instability metrics for Java, Spring Boot projects, helping developers analyze the structure and dependencies of their codebase.
 
-It follows the principles of Spring Modulith by analyzing only top-level packages at the same level as the `@SpringBootApplication` annotated class. These packages are expected to be functional layers rather than technical layers (controller, services, repositories etc.).
+It follows the principles of Spring Modulith by analyzing the [application module packages](https://docs.spring.io/spring-modulith/reference/fundamentals.html#modules.simple). These are direct sub-packages of the _main_ package that contains the `@SpringBootApplication` annotated class. Ideally, these packages are expected to be functional layers rather than technical layers (controller, services, repositories etc.).
 
 A [Nix Flake](#nix-flake) is provided to help build on systems with outdated java and maven installations.
 
-![screenshot](https://github.com/user-attachments/assets/5e84eb27-04d6-475c-8a9b-97b36d649ed6)
+![screenshot](https://github.com/user-attachments/assets/a496037d-62b2-42b5-809f-0eec2f63018a)
 
 ## Features
 

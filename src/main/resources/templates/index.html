@@ -158,15 +158,399 @@
             padding: 5px;
             margin-bottom: 10px;
         }
+
+        /* New styles for tabs */
+        #tabContainer {
+            display: none;
+            margin-top: 30px;
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+        }
+        .tab {
+            padding: 10px 20px;
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-right: 5px;
+            border-top-left-radius: 5px;
+            border-top-right-radius: 5px;
+        }
+        .tab:hover {
+            background-color: #e0e0e0;
+        }
+        .tab.active {
+            background-color: #fff;
+            border-bottom: 1px solid #fff;
+            margin-bottom: -1px;
+        }
+        .tab-content {
+            display: none;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-top: none;
+            background-color: #fff;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
+        #packageDependenciesContent {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            height: 100%;
+        }
+        .dropdown-container {
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .select-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 300px;
+            margin-right: 20px;
+        }
+        .select-wrapper select {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px 30px 10px 10px;
+            width: 100%;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .select-wrapper select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+        }
+        .select-wrapper::after {
+            /*content: "\25BC";*/
+            position: absolute;
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+            pointer-events: none;
+            color: #333;
+        }
+        .select-wrapper select option {
+            background-color: #fff;
+            color: #333;
+        }
+
+        .spinner {
+            display: none;
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
     <h1>Abstractness and Instability Metrics Calculator</h1>
-    <form hx-post="/scan" hx-target="#result">
+    <form hx-post="/scan" hx-target="#result" hx-indicator="#loadingSpinner" hx-on::after-request="showTabs()">
         <label for="path">Project Path:</label>
         <input type="text" id="path" name="path" required placeholder="Enter the project path...">
         <button type="submit">Scan</button>
     </form>
-    <div id="result"></div>
+
+    <div id="loadingSpinner" class="spinner"></div>
+
+    <div id="tabContainer">
+        <div class="tabs">
+            <div class="tab active" onclick="openTab(event, 'metricsTab')">Metrics Chart</div>
+            <div class="tab" onclick="openTab(event, 'packageDependenciesTab')">Dependency Visualization</div>
+        </div>
+
+        <div id="metricsTab" class="tab-content active">
+            <div id="result"></div>
+        </div>
+
+        <div id="packageDependenciesTab" class="tab-content">
+            <div id="packageDependenciesContent">
+                <div class="dropdown-container">
+                    <div class="select-wrapper">
+                        <select id="packageSelect" onchange="visualizePackageDependencies()">
+                            <option value="">Select a package</option>
+                        </select>
+                    </div>
+                    <div class="select-wrapper">
+                        <select id="dependencyTypeSelect" onchange="visualizePackageDependencies()">
+                            <option value="efferent">Efferent Dependencies</option>
+                            <option value="afferent">Afferent Dependencies</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="dependencyVisualization"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script>
+        function openTab(evt, tabName) {
+            var i, tabContent, tabLinks;
+            tabContent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabContent.length; i++) {
+                tabContent[i].style.display = "none";
+            }
+            tabLinks = document.getElementsByClassName("tab");
+            for (i = 0; i < tabLinks.length; i++) {
+                tabLinks[i].className = tabLinks[i].className.replace(" active", "");
+            }
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.className += " active";
+        }
+
+        function showTabs() {
+            document.getElementById('loadingSpinner').style.display = 'none';
+            document.getElementById('tabContainer').style.display = 'block';
+            populatePackageDropdown();
+        }
+
+        document.body.addEventListener('htmx:beforeRequest', function(event) {
+            document.getElementById('loadingSpinner').style.display = 'block';
+        });
+
+        document.body.addEventListener('htmx:afterRequest', function(event) {
+            document.getElementById('loadingSpinner').style.display = 'none';
+        });
+
+        function populatePackageDropdown() {
+            const packageSelect = document.getElementById('packageSelect');
+            const packages = Object.keys(window.metricsData || {});
+            packageSelect.innerHTML = '<option value="">Select a package</option>';
+            packages.forEach(pkg => {
+                const option = document.createElement('option');
+                option.value = pkg;
+                option.textContent = pkg;
+                packageSelect.appendChild(option);
+            });
+        }
+
+        function visualizePackageDependencies() {
+            const packageName = document.getElementById('packageSelect').value;
+            const dependencyType = document.getElementById('dependencyTypeSelect').value;
+            const visualizationDiv = document.getElementById('dependencyVisualization');
+
+            if (!packageName) {
+                visualizationDiv.innerHTML = '<p>Please select a package.</p>';
+                return;
+            }
+
+            const packageData = window.metricsData[packageName];
+            if (!packageData) {
+                visualizationDiv.innerHTML = '<p>No data available for the selected package.</p>';
+                return;
+            }
+
+            const dependencies = packageData[`${dependencyType}Dependencies`] || [];
+            createForceDirectedGraph(packageName, dependencies);
+        }
+
+        function createForceDirectedGraph(packageName, dependencies) {
+            const width = document.getElementById('dependencyVisualization').clientWidth;
+            const height = 500;
+
+            // Clear previous visualization
+            d3.select("#dependencyVisualization").selectAll("*").remove();
+
+            const svg = d3.select("#dependencyVisualization")
+                .append("svg")
+                .attr("width", width)
+                .attr("height", height)
+                .call(d3.zoom().on("zoom", (event) => {
+                    g.attr("transform", event.transform);
+                }));
+
+            const g = svg.append("g");
+
+            const nodes = [{ id: packageName, group: 1, level: 0 }];
+            const links = [];
+            const nodeMap = new Map();
+            nodeMap.set(packageName, nodes[0]);
+
+            dependencies.forEach(dep => {
+                const parts = dep.split('.');
+                let currentNode = nodes[0];
+                for (let i = 0; i < parts.length; i++) {
+                    const partialPackage = parts.slice(0, i + 1).join('.');
+                    if (!nodeMap.has(partialPackage)) {
+                        const newNode = { id: partialPackage, group: 2, level: i + 1 };
+                        nodes.push(newNode);
+                        nodeMap.set(partialPackage, newNode);
+                        links.push({ source: currentNode, target: newNode });
+                    }
+                    currentNode = nodeMap.get(partialPackage);
+                }
+            });
+
+            const simulation = d3.forceSimulation(nodes)
+                .force("link", d3.forceLink(links).id(d => d.id).distance(50))
+                .force("charge", d3.forceManyBody().strength(-100))
+                .force("center", d3.forceCenter(width / 2, height / 2))
+                .force("collision", d3.forceCollide().radius(30));
+
+            const link = g.append("g")
+                .selectAll("line")
+                .data(links)
+                .join("line")
+                .attr("stroke", "#999")
+                .attr("stroke-opacity", 0.6)
+                .attr("stroke-width", 1);
+
+            const node = g.append("g")
+                .selectAll("circle")
+                .data(nodes)
+                .join("circle")
+                .attr("r", d => 10 - d.level)
+                .attr("fill", d => d.group === 1 ? "#ff7f0e" : d3.interpolateBlues(1 - d.level / 10))
+                .call(drag(simulation));
+
+            const label = g.append("g")
+                .selectAll("text")
+                .data(nodes)
+                .join("text")
+                .text(d => d.id.split('.').pop())
+                .attr("font-size", d => `${12 - d.level}px`)
+                .attr("dx", 12)
+                .attr("dy", ".35em");
+
+            node.append("title")
+                .text(d => d.id);
+
+            simulation.on("tick", () => {
+                link
+                    .attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+
+                node
+                    .attr("cx", d => d.x)
+                    .attr("cy", d => d.y);
+
+                label
+                    .attr("x", d => d.x)
+                    .attr("y", d => d.y);
+            });
+
+            // Add search functionality
+            const search = d3.select("#dependencyVisualization")
+                .insert("div", ":first-child")
+                .append("input")
+                .attr("type", "text")
+                .attr("placeholder", "Search classes...")
+                .style("width", "300px")
+                .style("margin-bottom", "10px")
+                .on("input", function() {
+                    const term = this.value.toLowerCase();
+                    highlightMatchingNodes(term);
+                });
+
+            function highlightMatchingNodes(term) {
+                // Reset all nodes and links
+                node.attr("opacity", 0.3).attr("r", d => 10 - d.level);
+                label.attr("opacity", 0.3);
+                link.attr("opacity", 0.1).attr("stroke-width", 1);
+
+                if (term === "") {
+                    node.attr("opacity", 1);
+                    label.attr("opacity", 1);
+                    link.attr("opacity", 0.6);
+                    return;
+                }
+
+                const matchingNodes = nodes.filter(d => d.id.toLowerCase().includes(term));
+                const highlightedNodes = new Set();
+                const highlightedLinks = new Set();
+
+                matchingNodes.forEach(matchNode => {
+                    let currentNode = matchNode;
+                    while (currentNode) {
+                        highlightedNodes.add(currentNode.id);
+                        const parentLink = links.find(l => l.target === currentNode);
+                        if (parentLink) {
+                            highlightedLinks.add(parentLink);
+                            currentNode = parentLink.source;
+                        } else {
+                            break;
+                        }
+                    }
+                });
+
+                node.attr("opacity", d => highlightedNodes.has(d.id) ? 1 : 0.3)
+                    .attr("r", d => highlightedNodes.has(d.id) ? (15 - d.level) : (10 - d.level));
+                label.attr("opacity", d => highlightedNodes.has(d.id) ? 1 : 0.3);
+                link.attr("opacity", d => highlightedLinks.has(d) ? 1 : 0.1)
+                    .attr("stroke-width", d => highlightedLinks.has(d) ? 2 : 1);
+            }
+
+            // Add legend
+            const legend = svg.append("g")
+                .attr("transform", "translate(20,20)");
+
+            legend.append("circle")
+                .attr("r", 6)
+                .attr("fill", "#ff7f0e")
+                .attr("cx", 0)
+                .attr("cy", 0);
+
+            legend.append("text")
+                .attr("x", 15)
+                .attr("y", 5)
+                .text("Selected Package");
+
+            legend.append("circle")
+                .attr("r", 6)
+                .attr("fill", d3.interpolateBlues(0.5))
+                .attr("cx", 0)
+                .attr("cy", 25);
+
+            legend.append("text")
+                .attr("x", 15)
+                .attr("y", 30)
+                .text("Dependency");
+
+            function drag(simulation) {
+                function dragstarted(event) {
+                    if (!event.active) simulation.alphaTarget(0.3).restart();
+                    event.subject.fx = event.subject.x;
+                    event.subject.fy = event.subject.y;
+                }
+
+                function dragged(event) {
+                    event.subject.fx = event.x;
+                    event.subject.fy = event.y;
+                }
+
+                function dragended(event) {
+                    if (!event.active) simulation.alphaTarget(0);
+                    event.subject.fx = null;
+                    event.subject.fy = null;
+                }
+
+                return d3.drag()
+                    .on("start", dragstarted)
+                    .on("drag", dragged)
+                    .on("end", dragended);
+            }
+        }
+    </script>
 </body>
 </html>

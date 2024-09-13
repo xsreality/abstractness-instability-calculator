@@ -62,6 +62,7 @@
 
             (function() {
                 const metrics = /*[[${metrics}]]*/ {};
+                window.metricsData = metrics; // Store metrics data globally
                 const ctx = document.getElementById('metricsChart').getContext('2d');
                 
                 const data = {
@@ -240,6 +241,8 @@
                         </div>
                     `;
                     window.currentDetails = details;
+                    // Ensure efferent dependencies are stored in metricsData
+                    window.metricsData[details.packageName].efferentDependencies = details.efferentDependencies;
                 }
 
                 function createDependencyList(dependencies, type) {

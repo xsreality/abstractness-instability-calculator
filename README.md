@@ -8,12 +8,17 @@ A [Nix Flake](#nix-flake) is provided to help build on systems with outdated jav
 
 ![screenshot](https://github.com/user-attachments/assets/a496037d-62b2-42b5-809f-0eec2f63018a)
 
+Dependency Visualization
+
+![dependency_visualization_recording](https://github.com/user-attachments/assets/83ed8bae-5b0d-4b8c-a356-820e29c3ebad)
+
 ## Features
 
 - Scans Spring Boot projects to identify packages and their relationships
 - Calculates abstractness, instability, and distance from the main sequence for each package
 - Provides a web interface for easy project analysis
 - Visualizes results using an interactive scatter plot
+- Dependency visualization
 
 ## Prerequisites
 
